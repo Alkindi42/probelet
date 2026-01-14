@@ -5,36 +5,44 @@ import (
 	"net/http"
 )
 
-// ErrorResponse represents the JSON structure used for API error responses.
-type ErrorResponse struct {
-	Error string `json:"error"`
-}
-
-// Envelope is the standard wrapper used for successful JSON responses.
+// Envelope is the standard wrapper used for JSON API responses.
 type Envelope struct {
+	OK      bool   `json:"ok"`
 	Message string `json:"message"`
 	Data    any    `json:"data,omitempty"`
 }
 
-// JSONError writes a JSON-formatted error response with the given HTTP status code.
-func JSONError(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(ErrorResponse{Error: message})
-}
-
-// JSON writes a JSON response with the given HTTP status code and payload.
-func JSON(w http.ResponseWriter, status int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
+// writeJSON writes a JSON response with the given HTTP status code and payload.
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 
-	if payload == nil {
-		return
-	}
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
-// JSONResponse writes a standardized JSON response using the Envelope format
-func JSONResponse(w http.ResponseWriter, status int, message string, data any) {
-	JSON(w, status, Envelope{Message: message, Data: data})
+// JSON writes a standardized JSON response using the Envelope format.
+func JSON(w http.ResponseWriter, status int, message string, data any) {
+	writeJSON(
+		w,
+		status,
+		Envelope{
+			OK:      true,
+			Message: message,
+			Data:    data,
+		},
+	)
+}
+
+// JSONError writes a standardized JSON error response using the Envelope format.
+func JSONError(w http.ResponseWriter, status int, message string) {
+	writeJSON(
+		w,
+		status,
+		Envelope{
+			OK:      false,
+			Message: message,
+		},
+	)
 }

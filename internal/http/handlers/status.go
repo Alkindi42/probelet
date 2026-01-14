@@ -19,7 +19,7 @@ func NewStatusHandler() http.Handler {
 			return
 		}
 
-		response.JSONResponse(
+		response.JSON(
 			w,
 			httpStatusCode,
 			http.StatusText(httpStatusCode),

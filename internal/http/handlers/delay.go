@@ -34,7 +34,7 @@ func NewDelayHandler() http.Handler {
 
 		select {
 		case <-timer.C:
-			response.JSONResponse(w, http.StatusOK, "Delay finished", map[string]string{
+			response.JSON(w, http.StatusOK, "Delay finished", map[string]string{
 				"requested_duration": durationStr,
 			})
 		case <-r.Context().Done():
