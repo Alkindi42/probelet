@@ -12,6 +12,7 @@ func NewRouter() http.Handler {
 
 	mux.Handle("GET /http/status/{code}", handlers.NewStatusHandler())
 	mux.Handle("GET /http/delay", handlers.NewDelayHandler())
+	mux.Handle("GET /healthz", handlers.NewHealthzHandler())
 
 	return Logger(mux)
 }
