@@ -84,3 +84,32 @@ func TestStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestReadyz(t *testing.T) {
+	server := apphttp.NewRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	rr := httptest.NewRecorder()
+
+	server.ServeHTTP(rr, req)
+
+	if ct := rr.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
+		t.Fatalf("expected json content-type, got %q", ct)
+	}
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d", http.StatusOK, rr.Code)
+	}
+
+	env := decodeEnvelope(t, rr.Body.Bytes())
+
+	if env.OK != true {
+		t.Fatalf("expected ok=%v, got %v", true, env.OK)
+	}
+	if env.Message != "ready" {
+		t.Fatalf("expected message=%q, got %q", "ready", env.Message)
+	}
+	if len(env.Data) != 0 {
+		t.Fatalf("expected no data, got %s", string(env.Data))
+	}
+}
