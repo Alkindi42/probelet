@@ -10,7 +10,7 @@ import (
 func NewRouter() http.Handler {
 	mux := http.NewServeMux()
 
-	mux.Handle("GET /http/status/{code}", handlers.NewStatusHandler())
+	mux.Handle("GET /status/{code}", handlers.NewStatusHandler())
 	mux.Handle("GET /http/delay", handlers.NewDelayHandler())
 	mux.Handle("GET /healthz", handlers.NewHealthzHandler())
 
