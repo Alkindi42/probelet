@@ -3,31 +3,16 @@ package http_test
 import (
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
 	apphttp "github.com/Alkindi42/probelet/internal/http"
 )
 
-type envelope struct {
-	OK      bool            `json:"ok"`
-	Message string          `json:"message"`
-	Data    json.RawMessage `json:"data,omitempty"`
-}
-
-func decodeEnvelope(t *testing.T, body []byte) envelope {
-	t.Helper()
-	var env envelope
-	if err := json.Unmarshal(body, &env); err != nil {
-		t.Fatalf("failed to decode json: %v\nbody=%s", err, body)
-	}
-	return env
-}
-
+// ################
+// /status/{code} #
+// ################
 func TestStatus(t *testing.T) {
-	server := apphttp.NewRouter()
-
 	tests := []struct {
 		name        string
 		path        string
@@ -43,28 +28,14 @@ func TestStatus(t *testing.T) {
 		{"invalid_nonint", "/status/abc", 400, false, "invalid status code", 0},
 	}
 
+	server := apphttp.NewRouter()
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
-			rr := httptest.NewRecorder()
 
-			server.ServeHTTP(rr, req)
+			rr := doJSON(t, server, http.MethodGet, tc.path, nil)
 
-			if rr.Code != tc.wantStatus {
-				t.Fatalf("expected %d, got %d", tc.wantStatus, rr.Code)
-			}
-			if ct := rr.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
-				t.Fatalf("expected content-type json, got %q", ct)
-			}
-
-			env := decodeEnvelope(t, rr.Body.Bytes())
-
-			if env.OK != tc.wantOK {
-				t.Fatalf("expected ok=%v, got %v", tc.wantOK, env.OK)
-			}
-			if env.Message != tc.wantMessage {
-				t.Fatalf("expected message=%q, got %q", tc.wantMessage, env.Message)
-			}
+			env := assertJSONResponse(t, rr, tc.wantStatus, tc.wantOK, tc.wantMessage)
 
 			if tc.wantCode != 0 {
 				var data struct {
@@ -77,39 +48,76 @@ func TestStatus(t *testing.T) {
 					t.Fatalf("expected data.code=%d, got %d", tc.wantCode, data.Code)
 				}
 			} else {
-				if len(env.Data) != 0 {
-					t.Fatalf("expected no data, got %s", string(env.Data))
-				}
+				assertNoData(t, env)
 			}
 		})
 	}
 }
 
-func TestReadyz(t *testing.T) {
+// #########
+// /readyz #
+// #########
+
+func TestReadyz_StateTransitions(t *testing.T) {
 	server := apphttp.NewRouter()
 
-	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
-	rr := httptest.NewRecorder()
+	// 1) Check the default state (ready).
+	rr := doJSON(t, server, http.MethodGet, "/readyz", nil)
+	env := assertJSONResponse(t, rr, http.StatusOK, true, "ready")
+	assertNoData(t, env)
 
-	server.ServeHTTP(rr, req)
+	// 2) Set not ready with a reason
+	rr = doJSON(t, server, http.MethodPost, "/readyz", map[string]any{
+		"ready":  false,
+		"reason": "db down",
+	})
+	env = assertJSONResponse(t, rr, http.StatusOK, true, "updated")
 
-	if ct := rr.Header().Get("Content-Type"); ct != "application/json; charset=utf-8" {
-		t.Fatalf("expected json content-type, got %q", ct)
+	var postData struct {
+		Ready  bool   `json:"ready"`
+		Reason string `json:"reason"`
+	}
+	if err := json.Unmarshal(env.Data, &postData); err != nil {
+		t.Fatalf("failed to decode data: %v; data=%s", err, string(env.Data))
+	}
+	if postData.Ready != false || postData.Reason != "db down" {
+		t.Fatalf("unexpected post data: %+v", postData)
 	}
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected %d, got %d", http.StatusOK, rr.Code)
+	// 3) GET should be 503 with reason as message
+	rr = doJSON(t, server, http.MethodGet, "/readyz", nil)
+	env = assertJSONResponse(t, rr, http.StatusServiceUnavailable, false, "db down")
+	assertNoData(t, env)
+
+	// 4) Set ready=true should clear reason
+	rr = doJSON(t, server, http.MethodPost, "/readyz", map[string]any{
+		"ready":  true,
+		"reason": "should be cleared",
+	})
+	env = assertJSONResponse(t, rr, http.StatusOK, true, "updated")
+
+	if err := json.Unmarshal(env.Data, &postData); err != nil {
+		t.Fatalf("failed to decode data: %v; data=%s", err, string(env.Data))
+	}
+	if postData.Ready != true || postData.Reason != "" {
+		t.Fatalf("expected ready=true and empty reason, got %+v", postData)
 	}
 
-	env := decodeEnvelope(t, rr.Body.Bytes())
+	// 5) GET again should be ready
+	rr = doJSON(t, server, http.MethodGet, "/readyz", nil)
+	env = assertJSONResponse(t, rr, http.StatusOK, true, "ready")
+	assertNoData(t, env)
+}
 
-	if env.OK != true {
-		t.Fatalf("expected ok=%v, got %v", true, env.OK)
-	}
-	if env.Message != "ready" {
-		t.Fatalf("expected message=%q, got %q", "ready", env.Message)
-	}
-	if len(env.Data) != 0 {
-		t.Fatalf("expected no data, got %s", string(env.Data))
-	}
+func TestReadyzPost_InvalidPayload(t *testing.T) {
+	server := apphttp.NewRouter()
+
+	// Unknown field should fail due to DisallowUnknownFields()
+	rr := doJSON(t, server, http.MethodPost, "/readyz", map[string]any{
+		"ready":   false,
+		"reason":  "x",
+		"unknown": "field",
+	})
+
+	_ = assertJSONResponse(t, rr, http.StatusBadRequest, false, "invalid payload")
 }

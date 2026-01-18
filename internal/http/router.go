@@ -10,14 +10,15 @@ import (
 // NewRouter returns the application's root HTTP handler.
 func NewRouter() http.Handler {
 	mux := http.NewServeMux()
-	readinessStore := engine.NewReadinessStore()
 
 	mux.Handle("GET /delay", handlers.NewDelayHandler())
 	mux.Handle("GET /status/{code}", handlers.NewStatusHandler())
 	// Liveness
 	mux.Handle("GET /healthz", handlers.NewHealthzHandler())
 	// Readiness
-	mux.Handle("GET /readyz", handlers.NewReadyzHandler(readinessStore))
+	readinessStore := engine.NewReadinessStore()
+	mux.Handle("GET /readyz", handlers.NewReadyzGetHandler(readinessStore))
+	mux.Handle("POST /readyz", handlers.NewReadyzPostHandler(readinessStore))
 
 	return Logger(mux)
 }
