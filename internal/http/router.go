@@ -19,6 +19,8 @@ func NewRouter() http.Handler {
 	readinessStore := engine.NewReadinessStore()
 	mux.Handle("GET /readyz", handlers.NewReadyzGetHandler(readinessStore))
 	mux.Handle("POST /readyz", handlers.NewReadyzPostHandler(readinessStore))
+	// Stress
+	mux.Handle("GET /stress/cpu", handlers.NewStressCPUGetHandler())
 
 	return Logger(mux)
 }
