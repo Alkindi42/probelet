@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Verify gofmt
+        run: |
+          test -z "$(gofmt -l $(git ls-files '*.go'))" || (echo "gofmt required. Run: gofmt -w ." && exit 1)
+
+      - name: Verify go mod tidy
+        run: |
+          go mod tidy
+          git diff --exit-code || (echo "go.mod/go.sum not tidy. Run: go mod tidy" && exit 1)
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Lint (golangci-lint)
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.8.0
+          args: --timeout=5m
+
+      - name: Unit tests
+        run: go test ./...
+
+      - name: Race tests
+        if: github.event_name == 'pull_request'
+        run: go test -race ./...
+
+      - name: Build
+        run: go build -trimpath -ldflags="-s -w" -o probelet .

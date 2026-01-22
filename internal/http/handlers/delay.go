@@ -1,3 +1,4 @@
+// Package handlers provides HTTP handlers for the application's API endpoints.
 package handlers
 
 import (
@@ -20,7 +21,6 @@ func NewDelayHandler() http.Handler {
 		}
 
 		duration, err := time.ParseDuration(durationStr)
-
 		if err != nil {
 			response.JSONError(w, http.StatusBadRequest, "Invalid duration format. Use '5s', '100ms', etc.")
 			return

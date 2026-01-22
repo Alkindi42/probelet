@@ -23,8 +23,8 @@ func TestStatus(t *testing.T) {
 		wantMessage string
 		wantCode    int
 	}{
-		{"valid_202", "/status/202", 202, true, strings.ToLower(http.StatusText(202)), 202},
-		{"valid_504", "/status/504", 504, true, strings.ToLower(http.StatusText(504)), 504},
+		{"valid_202", "/status/202", 202, true, strings.ToLower(http.StatusText(http.StatusAccepted)), 202},
+		{"valid_504", "/status/504", 504, true, strings.ToLower(http.StatusText(http.StatusGatewayTimeout)), 504},
 		{"invalid_99", "/status/99", 400, false, "invalid status code", 0},
 		{"invalid_600", "/status/600", 400, false, "invalid status code", 0},
 		{"invalid_nonint", "/status/abc", 400, false, "invalid status code", 0},
@@ -34,7 +34,6 @@ func TestStatus(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-
 			rr := doJSON(t, server, http.MethodGet, tc.path, nil)
 
 			env := assertJSONResponse(t, rr, tc.wantStatus, tc.wantOK, tc.wantMessage)

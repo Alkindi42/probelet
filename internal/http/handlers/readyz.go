@@ -1,7 +1,9 @@
+// Package handlers provides HTTP handlers for the application's API endpoints.
 package handlers
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/Alkindi42/probelet/internal/engine"
@@ -35,7 +37,11 @@ func NewReadyzGetHandler(readinessStore *engine.ReadinessStore) http.Handler {
 // NewReadyzPostHandler returns an HTTP handler that updates the readiness state.
 func NewReadyzPostHandler(readinessStore *engine.ReadinessStore) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
+		defer func() {
+			if err := r.Body.Close(); err != nil {
+				slog.Warn("close request body", "err", err, "method", r.Method, "path", r.URL.Path)
+			}
+		}()
 
 		var readyRequest ReadyRequest
 

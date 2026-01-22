@@ -13,7 +13,6 @@ var cpuSink uint64
 // StressCPU burns CPU on the specified number of cores for the given duration.
 // The stress is canceled when the context is done.
 func StressCPU(ctx context.Context, cores int, duration time.Duration) error {
-
 	ctx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 
