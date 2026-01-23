@@ -1,5 +1,7 @@
 # Probelet
 
+[![CI](https://github.com/Alkindi42/probelet/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/Alkindi42/probelet/actions/workflows/ci.yaml)
+
 **Probelet** is a lightweight HTTP service designed to **simulate application and system behaviors** for testing platforms and orchestrators.
 
 It combines the simplicity of tools like `httpbin` with **controlled system stress capabilities** (CPU today, more to come), making it ideal for:

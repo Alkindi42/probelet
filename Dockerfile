@@ -18,10 +18,6 @@ RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
 
 FROM alpine:${ALPINE_VERSION} as runtime
 
-LABEL org.opencontainers.image.title="probelet" \
-  org.opencontainers.image.source="https://github.com/Alkindi42/probelet" \
-  org.opencontainers.image.description="Lightweight HTTP service to simulate probe and stress behaviors for platform testing."
-
 WORKDIR /app
 
 RUN apk add --no-cache ca-certificates wget \
