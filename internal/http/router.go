@@ -1,3 +1,4 @@
+// Package http provides the main HTTP routing and middleware setup for the application.package http
 package http
 
 import (
@@ -11,6 +12,7 @@ import (
 func NewRouter() http.Handler {
 	mux := http.NewServeMux()
 
+	mux.Handle("/echo", handlers.NewEchoAnyHandler())
 	mux.Handle("GET /delay", handlers.NewDelayHandler())
 	mux.Handle("GET /status/{code}", handlers.NewStatusHandler())
 	// Liveness
