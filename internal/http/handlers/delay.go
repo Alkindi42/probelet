@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -9,9 +10,11 @@ import (
 	"github.com/Alkindi42/probelet/internal/http/response"
 )
 
-// NewDelayHandler returns an HTTP handler that waits for a given duration
+const maxDelay = 5 * time.Minute
+
+// NewDelayGetHandler returns an HTTP handler that waits for a given duration
 // provided via the "duration" query parameter before responding.
-func NewDelayHandler() http.Handler {
+func NewDelayGetHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		durationStr := r.URL.Query().Get("duration")
 
@@ -26,6 +29,15 @@ func NewDelayHandler() http.Handler {
 			return
 		}
 
+		if duration > maxDelay {
+			response.JSONError(
+				w,
+				http.StatusBadRequest,
+				fmt.Sprintf("duration exceeds maximum allowed (%.1fm)", maxDelay.Minutes()),
+			)
+			return
+		}
+
 		slog.Info("delay requested", "duration", durationStr)
 
 		timer := time.NewTimer(duration)
@@ -34,9 +46,11 @@ func NewDelayHandler() http.Handler {
 
 		select {
 		case <-timer.C:
-			response.JSON(w, http.StatusOK, "Delay finished", map[string]string{
-				"requested_duration": durationStr,
-			})
+			response.JSON(
+				w, http.StatusOK,
+				"done",
+				map[string]string{"duration": durationStr},
+			)
 		case <-r.Context().Done():
 			slog.Warn("client disconnected during delay", "duration", durationStr)
 			return

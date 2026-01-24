@@ -13,7 +13,7 @@ func NewRouter() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.Handle("/echo", handlers.NewEchoAnyHandler())
-	mux.Handle("GET /delay", handlers.NewDelayHandler())
+	mux.Handle("GET /delay", handlers.NewDelayGetHandler())
 	mux.Handle("GET /status/{code}", handlers.NewStatusHandler())
 	// Liveness
 	mux.Handle("GET /healthz", handlers.NewHealthzHandler())
