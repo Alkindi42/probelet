@@ -129,3 +129,30 @@ func TestEcho_POST_Truncation(t *testing.T) {
 		t.Fatalf("expected body.bytes=%d, got %d", max, data.Body.Bytes)
 	}
 }
+
+func TestEcho_DoesNotInjectRequestID_WhenMissing(t *testing.T) {
+	server := apphttp.NewRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/echo", nil)
+	rr := httptest.NewRecorder()
+
+	server.ServeHTTP(rr, req)
+
+	if got := rr.Header().Get("X-Request-Id"); got != "" {
+		t.Fatalf("expected no X-Request-Id header when missing upstream, got %q", got)
+	}
+}
+
+func TestEcho_PreservesAndEchoesRequestID_WhenProvided(t *testing.T) {
+	server := apphttp.NewRouter()
+
+	req := httptest.NewRequest(http.MethodGet, "/echo", nil)
+	req.Header.Set("X-Request-Id", "toot")
+	rr := httptest.NewRecorder()
+
+	server.ServeHTTP(rr, req)
+
+	if got := rr.Header().Get("X-Request-Id"); got != "toot" {
+		t.Fatalf("expected X-Request-Id to be preserved on /echo, got %q", got)
+	}
+}

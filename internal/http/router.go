@@ -24,5 +24,5 @@ func NewRouter() http.Handler {
 	// Stress
 	mux.Handle("GET /stress/cpu", handlers.NewStressCPUGetHandler())
 
-	return Logger(mux)
+	return RequestID(Logger(mux))
 }
