@@ -112,6 +112,66 @@ curl "http://localhost:8000/stress/cpu?duration=10s&cores=max"
 * stops immediately if the client disconnects
 * non-root container image
 
+### Delayed responses
+
+Simulate slow or timing-sensitive services.
+
+```bash
+curl "http://localhost:8000/delay?duration=500ms"
+```
+
+Useful to test:
+
+* retries
+* client timeouts
+* ingress / gateway behavior
+* service mesh latency handling
+
+Safety limits:
+
+* maximum delay: **5 minutes**
+* request is canceled immediately if the client disconnects
+
+### Echo request inspector
+
+Echo back the incoming HTTP request for debugging and inspection.
+
+This endpoint reflects method, path, query parameters, headers, client/network information, and a bounded request body.
+
+```bash
+curl "http://localhost:8000/echo?q=foo"
+```
+
+Response (example):
+
+```json
+{
+  "ok": true,
+  "message": "echo",
+  "data": {
+    "method": "GET",
+    "path": "/echo",
+    "raw_query": "q=foo",
+    "query": { "q": ["foo"] },
+    "headers": { "User-Agent": ["curl/8.7.1"] },
+    "client_ip": "10.0.0.12",
+    "remote_addr": "10.0.0.12:54321",
+    "body": {
+      "content": "",
+      "bytes": 0,
+      "is_truncated": false
+    }
+  }
+}
+```
+
+Useful to test:
+
+* ingress / gateway header rewriting
+* service mesh behavior
+* client request formatting
+* proxy forwarding (X-Forwarded-For, X-Real-IP)
+
 ---
 
 ## ☸️ Kubernetes
