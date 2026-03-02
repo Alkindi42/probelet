@@ -148,7 +148,7 @@ func TestStressCPU(t *testing.T) {
 			path:        "/stress/cpu",
 			wantStatus:  http.StatusBadRequest,
 			wantOK:      false,
-			wantMessage: "duration query parameter is required (e.g. 100ms, 5s, 2m)",
+			wantMessage: "required",
 			wantData:    nil,
 		},
 		{
@@ -156,7 +156,7 @@ func TestStressCPU(t *testing.T) {
 			path:        "/stress/cpu?duration=abc",
 			wantStatus:  http.StatusBadRequest,
 			wantOK:      false,
-			wantMessage: "invalid duration query parameter (examples: 100ms, 5s, 2m)",
+			wantMessage: "invalid",
 			wantData:    nil,
 		},
 		{

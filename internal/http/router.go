@@ -23,6 +23,7 @@ func NewRouter() http.Handler {
 	mux.Handle("POST /readyz", handlers.NewReadyzPostHandler(readinessStore))
 	// Stress
 	mux.Handle("GET /stress/cpu", handlers.NewStressCPUGetHandler())
+	mux.Handle("GET /stress/memory", handlers.NewStressMemoryGetHandler())
 
 	return RequestID(Logger(mux))
 }

@@ -67,7 +67,7 @@ func assertJSONResponse(t *testing.T, rr *httptest.ResponseRecorder, wantStatus 
 	if env.OK != wantOK {
 		t.Fatalf("expected ok=%v, got %v; body=%s", wantOK, env.OK, rr.Body.String())
 	}
-	if env.Message != wantMsg && !strings.Contains(env.Message, wantMsg) {
+	if wantMsg != "" && !strings.Contains(env.Message, wantMsg) {
 		t.Fatalf("expected message=%q, got %q; body=%s", wantMsg, env.Message, rr.Body.String())
 	}
 	return env
