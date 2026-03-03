@@ -1,11 +1,17 @@
 package handlers
 
 import (
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Alkindi42/probelet/internal/http/response"
+)
+
+const (
+	maxStatusDelay = 2 * time.Minute
 )
 
 func parseStatusCode(codeStr string) (int, bool) {
@@ -28,6 +34,24 @@ func NewStatusHandler() http.Handler {
 		if !ok {
 			response.JSONError(w, http.StatusBadRequest, "invalid status code")
 			return
+		}
+
+		durationStr := r.URL.Query().Get("duration")
+		duration, err := parseOptionalDurationParam(durationStr, maxStatusDelay)
+		if err != nil {
+			response.JSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if duration > 0 {
+			select {
+			case <-time.After(duration):
+				slog.Info("status delay finished", "duration", duration.String())
+
+			case <-r.Context().Done():
+				slog.Warn("client disconnected before delay finished", "duration", duration.String())
+				return
+			}
 		}
 
 		response.JSON(
