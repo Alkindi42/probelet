@@ -9,7 +9,7 @@ import (
 )
 
 // NewRouter returns the application's root HTTP handler.
-func NewRouter() http.Handler {
+func NewRouter(readinessStore *engine.ReadinessStore) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.Handle("/echo", handlers.NewEchoAnyHandler())
@@ -18,7 +18,6 @@ func NewRouter() http.Handler {
 	// Liveness
 	mux.Handle("GET /healthz", handlers.NewHealthzHandler())
 	// Readiness
-	readinessStore := engine.NewReadinessStore()
 	mux.Handle("GET /readyz", handlers.NewReadyzGetHandler(readinessStore))
 	mux.Handle("POST /readyz", handlers.NewReadyzPostHandler(readinessStore))
 	// Stress
