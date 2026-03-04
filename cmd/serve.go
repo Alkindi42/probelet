@@ -32,28 +32,16 @@ var serveCmd = &cobra.Command{
 
 		addr := ":8000"
 		readinessStore := engine.NewReadinessStore()
+		readinessCtl := engine.NewReadinessController(readinessStore)
 
 		runCtx, runCancel := context.WithCancel(context.Background())
 		defer runCancel()
 
 		if serveOpts.initialReadinessDelay > 0 {
-			readinessStore.Set(false, "initial readiness delay")
-
-			go func(delay time.Duration) {
-				timer := time.NewTimer(delay)
-				defer timer.Stop()
-
-				select {
-				case <-timer.C:
-					readinessStore.Set(true, "")
-					slog.Info("readiness enabled after initial delay", "delay", serveOpts.initialReadinessDelay.String())
-				case <-runCtx.Done():
-					slog.Info("readiness delay canceled (shutdown)")
-				}
-			}(serveOpts.initialReadinessDelay)
+			readinessCtl.StartInitialDelay(runCtx, serveOpts.initialReadinessDelay)
 		}
 
-		router := apphttp.NewRouter(readinessStore)
+		router := apphttp.NewRouter(readinessCtl)
 		server := &http.Server{
 			Addr:    addr,
 			Handler: router,

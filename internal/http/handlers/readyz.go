@@ -18,9 +18,9 @@ type ReadyRequest struct {
 
 // NewReadyzGetHandler returns an HTTP handler that reports the current readiness
 // state of the application, intended for use as a Kubernetes readiness probe.
-func NewReadyzGetHandler(readinessStore *engine.ReadinessStore) http.Handler {
+func NewReadyzGetHandler(readiness engine.Readiness) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ready, reason := readinessStore.Get()
+		ready, reason := readiness.Get()
 
 		if !ready {
 			response.JSONError(
@@ -35,7 +35,7 @@ func NewReadyzGetHandler(readinessStore *engine.ReadinessStore) http.Handler {
 }
 
 // NewReadyzPostHandler returns an HTTP handler that updates the readiness state.
-func NewReadyzPostHandler(readinessStore *engine.ReadinessStore) http.Handler {
+func NewReadyzPostHandler(readiness engine.Readiness) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := r.Body.Close(); err != nil {
@@ -55,7 +55,7 @@ func NewReadyzPostHandler(readinessStore *engine.ReadinessStore) http.Handler {
 		if readyRequest.Ready {
 			readyRequest.Reason = ""
 		}
-		readinessStore.Set(readyRequest.Ready, readyRequest.Reason)
+		readiness.Set(readyRequest.Ready, readyRequest.Reason)
 
 		response.JSON(
 			w,
