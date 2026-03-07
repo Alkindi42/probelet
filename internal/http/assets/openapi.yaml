@@ -1,0 +1,921 @@
+openapi: 3.0.3
+
+info:
+  title: Probelet API
+  version: 0.1.0
+  description: |
+    Probelet is a lightweight HTTP service for simulating application and system
+    behaviors in test, staging, and platform environments.
+
+    It is designed for SREs, platform engineers, and developers who need to:
+      - test liveness and readiness probes
+      - simulate delayed or failing upstreams
+      - inspect incoming HTTP requests
+      - trigger bounded CPU and memory stress
+
+    Probelet is intentionally:
+      - stateless
+      - deterministic
+      - safe by default
+      - easy to run as a single binary or container
+
+servers:
+  - url: http://localhost:8000
+    description: Local Probelet instance
+  - url: /
+    description: Relative base URL when documentation is served by Probelet itself
+
+tags:
+  - name: documentation
+    description: Endpoints exposing the OpenAPI specification and interactive API documentation.
+  - name: probes
+    description: Liveness and readiness endpoints used by orchestrators and load balancers.
+  - name: debugging
+    description: Endpoints for simulating HTTP behaviour and inspecting requests.
+  - name: stress
+    description: Endpoints for triggering bounded CPU and memory pressure.
+
+components:
+  parameters:
+
+    DelayDuration:
+      name: duration
+      in: query
+      required: true
+      description: |
+        Required delay duration parsed using Go's `time.ParseDuration`.
+
+        The value must be greater than zero.
+
+        Maximum supported value: `5m`.
+      schema:
+        type: string
+        example: 500ms
+
+    StressCPUDuration:
+      name: duration
+      in: query
+      required: true
+      description: |
+        Required CPU stress duration parsed using Go's `time.ParseDuration`.
+
+        The value must be greater than zero.
+
+        Maximum supported value: `2m`.
+      schema:
+        type: string
+        example: 10s
+
+    StressMemoryDuration:
+      name: duration
+      in: query
+      required: true
+      description: |
+        Required memory hold duration parsed using Go's `time.ParseDuration`.
+
+        The value must be greater than zero.
+
+        Maximum supported value: `5m`.
+
+        The duration starts after allocation completes.
+      schema:
+        type: string
+        example: 10s
+
+    StatusDelay:
+      name: duration
+      in: query
+      required: false
+      description: |
+        Optional delay before returning the requested status code.
+
+        Parsed using Go's `time.ParseDuration`.
+
+        If provided, the value must be greater than zero.
+
+        Maximum supported value: `2m`.
+      schema:
+        type: string
+        example: 2s
+
+    StatusCode:
+      name: code
+      in: path
+      required: true
+      description: HTTP status code to return. Must be between 100 and 599.
+      schema:
+        type: integer
+        minimum: 100
+        maximum: 599
+        example: 503
+
+    Cores:
+      name: cores
+      in: query
+      required: false
+      description: |
+        Number of CPU cores to stress.
+
+        Accepted values:
+          - a positive integer such as `1`, `2`, `4`
+          - the literal string `max` to use all available logical CPUs
+
+        If omitted, Probelet defaults to `1`.
+      schema:
+        type: string
+        pattern: '^(max|[1-9][0-9]*)$'
+        example: max
+
+    Size:
+      name: size
+      in: query
+      required: true
+      description: |
+        Memory size to allocate.
+
+        The value is parsed using Kubernetes quantity syntax via
+        `resource.ParseQuantity`, so values like `64Mi`, `128Mi`, `1Gi`
+        are accepted.
+
+        If no suffix is provided, the value is interpreted as bytes.
+
+        Maximum supported value: `1Gi`.
+      schema:
+        type: string
+        example: 64Mi
+
+  headers:
+    XRequestId:
+      description: |
+        Request correlation identifier.
+
+        Probelet generates and returns this header on all endpoints except `/echo`.
+
+        On `/echo`, the header is only returned if it was already present on the
+        incoming request.
+      schema:
+        type: string
+
+    CacheControl:
+      description: Cache policy for the response.
+      schema:
+        type: string
+        example: no-store
+
+    XContentTypeOptions:
+      description: Prevents MIME type sniffing.
+      schema:
+        type: string
+        example: nosniff
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+        - ok
+        - message
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        message:
+          type: string
+      additionalProperties: false
+
+    HealthResponse:
+      type: object
+      required:
+        - ok
+        - message
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+          enum: [healthy]
+      additionalProperties: false
+
+    ReadyResponse:
+      type: object
+      required:
+        - ok
+        - message
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+          enum: [ready]
+      additionalProperties: false
+
+    ReadyzUpdateRequest:
+      type: object
+      required:
+        - ready
+      properties:
+        ready:
+          type: boolean
+        reason:
+          type: string
+      additionalProperties: false
+
+    ReadyzState:
+      type: object
+      required:
+        - ready
+        - reason
+      properties:
+        ready:
+          type: boolean
+        reason:
+          type: string
+      additionalProperties: false
+
+    ReadyzUpdateResponse:
+      type: object
+      required:
+        - ok
+        - message
+        - data
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+          enum: [updated]
+        data:
+          $ref: '#/components/schemas/ReadyzState'
+      additionalProperties: false
+
+    StatusData:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: integer
+          minimum: 100
+          maximum: 599
+      additionalProperties: false
+
+    StatusResponse:
+      type: object
+      required:
+        - ok
+        - message
+        - data
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/StatusData'
+      additionalProperties: false
+
+    DelayData:
+      type: object
+      required:
+        - duration
+      properties:
+        duration:
+          type: string
+      additionalProperties: false
+
+    DelayResponse:
+      type: object
+      required:
+        - ok
+        - message
+        - data
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+          enum: [done]
+        data:
+          $ref: '#/components/schemas/DelayData'
+      additionalProperties: false
+
+    HeaderValues:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+
+    QueryValues:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+
+    EchoBody:
+      type: object
+      required:
+        - content
+        - bytes
+        - is_truncated
+      properties:
+        content:
+          type: string
+          description: |
+            Request body content as UTF-8 text when possible.
+            If the body is not valid UTF-8, the content is returned as a base64-encoded string.
+        bytes:
+          type: integer
+          format: int64
+          description: Number of bytes returned in the echoed body payload, after truncation if applicable.
+        is_truncated:
+          type: boolean
+      additionalProperties: false
+
+    EchoData:
+      type: object
+      required:
+        - body
+        - client_ip
+        - content_length
+        - content_type
+        - forwarded_for
+        - headers
+        - host
+        - method
+        - path
+        - proto
+        - query
+        - raw_query
+        - remote_addr
+        - user_agent
+        - x_real_ip
+      properties:
+        body:
+          $ref: '#/components/schemas/EchoBody'
+        client_ip:
+          type: string
+        content_length:
+          type: integer
+          format: int64
+        content_type:
+          type: string
+        forwarded_for:
+          type: string
+        headers:
+          $ref: '#/components/schemas/HeaderValues'
+        host:
+          type: string
+        method:
+          type: string
+        path:
+          type: string
+        proto:
+          type: string
+        query:
+          $ref: '#/components/schemas/QueryValues'
+        raw_query:
+          type: string
+        remote_addr:
+          type: string
+        user_agent:
+          type: string
+        x_real_ip:
+          type: string
+      additionalProperties: false
+
+    EchoResponse:
+      type: object
+      required:
+        - ok
+        - message
+        - data
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+          enum: [echo]
+        data:
+          $ref: '#/components/schemas/EchoData'
+      additionalProperties: false
+
+    StressCPUData:
+      type: object
+      required:
+        - cores
+        - duration
+      properties:
+        cores:
+          type: integer
+          minimum: 1
+        duration:
+          type: string
+      additionalProperties: false
+
+    StressCPUResponse:
+      type: object
+      required:
+        - ok
+        - message
+        - data
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+          enum: [done]
+        data:
+          $ref: '#/components/schemas/StressCPUData'
+      additionalProperties: false
+
+    StressMemoryData:
+      type: object
+      required:
+        - size
+        - bytes
+        - duration
+      properties:
+        size:
+          type: string
+        bytes:
+          type: integer
+          format: int64
+        duration:
+          type: string
+      additionalProperties: false
+
+    StressMemoryResponse:
+      type: object
+      required:
+        - ok
+        - message
+        - data
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+          enum: [done]
+        data:
+          $ref: '#/components/schemas/StressMemoryData'
+      additionalProperties: false
+
+paths:
+  /healthz:
+    get:
+      tags: [probes]
+      summary: Liveness probe
+      description: |
+        Returns a successful liveness response as long as the Probelet process is running.
+
+        This endpoint is intended for liveness checks and does not reflect readiness state.
+      operationId: getHealthz
+      responses:
+        '200':
+          description: Probelet is alive.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /readyz:
+    get:
+      tags: [probes]
+      summary: Readiness probe
+      description: |
+        Returns the current readiness state of Probelet.
+
+        This endpoint is suitable for Kubernetes readiness probes or any load balancer
+        / orchestrator that needs to know whether Probelet should receive traffic.
+
+        Readiness can be influenced by:
+          - the initial readiness delay at startup
+          - manual updates through `POST /readyz`
+      operationId: getReadyz
+      responses:
+        '200':
+          description: Probelet is ready.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+        '503':
+          description: |
+            Probelet is not ready.
+
+            The response message contains the current readiness reason, such as:
+              - initial readiness delay
+              - a manual override reason set through POST /readyz
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags: [probes]
+      summary: Update readiness state
+      description: |
+        Manually updates the readiness state.
+
+        This is useful for simulating dependency failures, draining, rollout delays,
+        or other not-ready scenarios. Manual updates override any in-progress
+        initial readiness delay.
+      operationId: postReadyz
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadyzUpdateRequest'
+      responses:
+        '200':
+          description: Readiness state updated.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyzUpdateResponse'
+        '400':
+          description: Invalid request payload.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /delay:
+    get:
+      tags: [debugging]
+      summary: Delayed successful response
+      description: |
+        Waits for the requested duration, then returns a successful response.
+
+        This is useful for testing client-side timeouts, retries, and slow upstream behaviour.
+
+        The duration is required, must be greater than zero, and must not exceed 5 minutes.
+      operationId: getDelay
+      parameters:
+        - $ref: '#/components/parameters/DelayDuration'
+      responses:
+        '200':
+          description: Delay completed successfully.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DelayResponse'
+        '400':
+          description: Invalid delay parameter.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /echo:
+    get:
+      tags: [debugging]
+      summary: Echo request details
+      description: |
+        Returns a structured representation of the incoming request.
+
+        This endpoint is useful for inspecting:
+          - headers
+          - query parameters
+          - request body
+          - client address and forwarded headers
+          - content type and protocol information
+
+        The current implementation accepts any HTTP method.
+
+        GET and POST are documented here as representative examples.
+      operationId: getEcho
+      responses:
+        '200':
+          description: Request details echoed back.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EchoResponse'
+        '400':
+          description: Failed to read request body.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [debugging]
+      summary: Echo request details with body
+
+      description: |
+        Returns a structured representation of the incoming request.
+
+        This endpoint accepts any HTTP method. POST is documented here as a
+        representative example for requests carrying a body.
+
+        The request body is read and returned in a bounded representation.
+      operationId: postEcho
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+          text/plain:
+            schema:
+              type: string
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Request details echoed back.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EchoResponse'
+        '400':
+          description: Failed to read request body.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /status/{code}:
+    get:
+      tags: [debugging]
+      summary: Return an arbitrary HTTP status code
+      description: |
+        Returns the requested HTTP status code between 100 and 599.
+
+        An optional `duration` query parameter can be used to delay the response,
+        which is useful for testing timeouts, retries, and slow failing upstreams.
+
+        Note: `400` is special because it can be returned both:
+          - as a valid requested status code
+          - as an input validation error
+
+        For response codes that do not normally carry a response body (for example 1xx, 204, or 304), the JSON envelope may be omitted by the HTTP server.
+      operationId: getStatus
+      parameters:
+        - $ref: '#/components/parameters/StatusCode'
+        - $ref: '#/components/parameters/StatusDelay'
+      responses:
+        '400':
+          description: |
+            Either:
+              - a valid requested HTTP 400 response
+              - or an invalid input error
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/StatusResponse'
+                  - $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Requested status response.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusResponse'
+
+  /stress/cpu:
+    get:
+      tags: [stress]
+      summary: Stress CPU for a bounded duration
+      description: |
+        Triggers CPU-intensive work for the specified duration.
+
+        This endpoint is intended for testing autoscaling, throttling, alerting,
+        and general CPU pressure behaviour.
+      operationId: getStressCPU
+      parameters:
+        - $ref: '#/components/parameters/StressCPUDuration'
+        - $ref: '#/components/parameters/Cores'
+      responses:
+        '200':
+          description: CPU stress completed.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StressCPUResponse'
+        '400':
+          description: Invalid stress parameters.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal CPU stress failure.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /stress/memory:
+    get:
+      tags: [stress]
+      summary: Stress memory for a bounded duration
+      description: |
+        Allocates memory, actively touches pages so the allocation is committed by the
+        operating system, and then keeps that memory allocated for the requested duration.
+
+        The requested duration starts after allocation completes.
+
+        This endpoint is useful for testing memory pressure, OOM behaviour,
+        eviction scenarios, and alerting.
+      operationId: getStressMemory
+      parameters:
+        - $ref: '#/components/parameters/StressMemoryDuration'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Memory stress completed.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StressMemoryResponse'
+        '400':
+          description: Invalid stress parameters.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal memory stress failure.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /docs:
+    get:
+      tags: [documentation]
+      summary: Interactive API documentation
+      operationId: getDocs
+      responses:
+        '200':
+          description: HTML documentation page
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /openapi.yaml:
+    get:
+      tags: [documentation]
+      summary: OpenAPI specification
+      operationId: getOpenAPISpec
+      responses:
+        '200':
+          description: OpenAPI document in YAML format
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/yaml:
+              schema:
+                type: string

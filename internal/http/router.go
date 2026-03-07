@@ -23,6 +23,9 @@ func NewRouter(readiness engine.Readiness) http.Handler {
 	// Stress
 	mux.Handle("GET /stress/cpu", handlers.NewStressCPUGetHandler())
 	mux.Handle("GET /stress/memory", handlers.NewStressMemoryGetHandler())
+	// Documentation
+	mux.Handle("GET /docs", handlers.NewDocsHandler())
+	mux.Handle("GET /openapi.yaml", handlers.NewOpenAPIHandler())
 
 	return RequestID(Logger(mux))
 }
