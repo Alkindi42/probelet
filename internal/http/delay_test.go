@@ -16,8 +16,8 @@ func TestDelay(t *testing.T) {
 		wantMessage string
 	}{
 		{"missing_duration", "/delay", http.StatusBadRequest, false, "Missing"},
-		{"invalid_duration", "/delay?duration=foo", http.StatusBadRequest, false, "format"},
-		{"duration_too_long", "/delay?duration=10m", http.StatusBadRequest, false, "maximum"},
+		{"invalid_duration", "/delay?duration=foo", http.StatusBadRequest, false, "invalid duration"},
+		{"duration_too_long", "/delay?duration=10m", http.StatusBadRequest, false, "must be <="},
 		{"ok", "/delay?duration=5ms", http.StatusOK, true, "done"},
 	}
 

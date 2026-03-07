@@ -2,7 +2,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -23,25 +22,15 @@ func NewDelayGetHandler() http.Handler {
 			return
 		}
 
-		duration, err := time.ParseDuration(durationStr)
+		duration, err := parseDurationParam(durationStr, maxDelay)
 		if err != nil {
-			response.JSONError(w, http.StatusBadRequest, "Invalid duration format. Use '5s', '100ms', etc.")
+			response.JSONError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		if duration > maxDelay {
-			response.JSONError(
-				w,
-				http.StatusBadRequest,
-				fmt.Sprintf("duration exceeds maximum allowed (%.1fm)", maxDelay.Minutes()),
-			)
-			return
-		}
-
-		slog.Info("delay requested", "duration", durationStr)
+		slog.Info("delay requested", "duration", duration.String())
 
 		timer := time.NewTimer(duration)
-
 		defer timer.Stop()
 
 		select {
@@ -49,10 +38,10 @@ func NewDelayGetHandler() http.Handler {
 			response.JSON(
 				w, http.StatusOK,
 				"done",
-				map[string]string{"duration": durationStr},
+				map[string]string{"duration": duration.String()},
 			)
 		case <-r.Context().Done():
-			slog.Warn("client disconnected during delay", "duration", durationStr)
+			slog.Warn("client disconnected during delay", "duration", duration.String())
 			return
 		}
 	})
