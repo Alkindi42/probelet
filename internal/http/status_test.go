@@ -32,7 +32,8 @@ func TestStatus(t *testing.T) {
 		{"duration_too_large", "/status/200?duration=20m", 400, false, "<=", 0},
 	}
 
-	server := apphttp.NewRouter()
+	fakeReadiness := FakeReadiness{ready: true}
+	server := apphttp.NewRouter(&fakeReadiness)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

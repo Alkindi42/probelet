@@ -15,7 +15,8 @@ import (
 // #########
 
 func TestReadyz_StateTransitions(t *testing.T) {
-	server := apphttp.NewRouter()
+	fakeReadiness := FakeReadiness{ready: true}
+	server := apphttp.NewRouter(&fakeReadiness)
 
 	// 1) Check the default state (ready).
 	rr := doJSON(t, server, http.MethodGet, "/readyz", nil)
@@ -66,7 +67,8 @@ func TestReadyz_StateTransitions(t *testing.T) {
 }
 
 func TestReadyzPost_InvalidPayload(t *testing.T) {
-	server := apphttp.NewRouter()
+	fakeReadiness := FakeReadiness{ready: true}
+	server := apphttp.NewRouter(&fakeReadiness)
 
 	// Unknown field should fail due to DisallowUnknownFields()
 	rr := doJSON(t, server, http.MethodPost, "/readyz", map[string]any{
@@ -198,7 +200,8 @@ func TestStressCPU(t *testing.T) {
 		},
 	}
 
-	server := apphttp.NewRouter()
+	fakeReadiness := FakeReadiness{ready: true}
+	server := apphttp.NewRouter(&fakeReadiness)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

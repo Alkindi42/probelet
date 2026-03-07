@@ -41,7 +41,8 @@ func TestStressMemory(t *testing.T) {
 		},
 	}
 
-	server := apphttp.NewRouter()
+	fakeReadiness := FakeReadiness{ready: true}
+	server := apphttp.NewRouter(&fakeReadiness)
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
