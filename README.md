@@ -4,14 +4,14 @@
 
 **Probelet** is a lightweight HTTP service designed to **simulate application and system behaviors** for testing platforms and orchestrators.
 
-It combines the simplicity of tools like `httpbin` with **controlled system stress capabilities** (CPU today, more to come), making it ideal for:
+It combines the simplicity of tools like `httpbin` with **controlled system stress capabilities**, making it ideal for:
 
-* testing Kubernetes liveness/readiness probes
+* testing Kubernetes liveness and readiness probes
 * validating autoscaling (HPA)
-* debugging timeouts and failure scenarios
+* simulating slow or failing upstream services
+* debugging timeouts and retry logic
+* inspecting incoming HTTP requests
 * exercising observability and monitoring stacks
-
-Probelet runs as a **single, stateless Go binary**, and exposes everything via a simple HTTP API.
 
 ---
 
@@ -25,152 +25,44 @@ Verify it’s running:
 
 ```bash
 curl http://localhost:8000/healthz
-# {"ok":true,"message":"healthy"}
+{"ok":true,"message":"healthy"}
 ```
 
 ---
 
-## 📡 HTTP API
+## 📚 API documentation
 
-Probelet listens on port **8000** by default.
+Probelet exposes an interactive API reference powered by OpenAPI.
 
-### Health & readiness
+Once the service is running, open: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-| Endpoint   | Method | Description                                         |
-| ---------- | ------ | --------------------------------------------------- |
-| `/healthz` | GET    | Liveness probe (always healthy if process is alive) |
-| `/readyz`  | GET    | Readiness probe                                     |
-| `/readyz`  | POST   | Toggle readiness state                              |
+The OpenAPI specification is also available at: [http://localhost:8000/openapi.yaml](http://localhost:8000/openapi.yaml)
 
-Example:
+## 🧪 Examples
+
+Simulate a slow service:
 
 ```bash
-curl http://localhost:8000/readyz
+curl "http://localhost:8000/delay?duration=3s"
 ```
 
-Mark the service as **not ready**:
+Trigger CPU pressure:
 
 ```bash
-curl -X POST http://localhost:8000/readyz \
-  -H "Content-Type: application/json" \
-  -d '{"ready":false,"reason":"dependency unavailable"}'
+curl "http://localhost:8000/stress/cpu?duration=10s&cores=max"
 ```
 
----
-
-### HTTP status simulator
-
-Return any HTTP status code on demand.
+Return a specific HTTP status:
 
 ```bash
 curl http://localhost:8000/status/503
 ```
 
-Response:
-
-```json
-{"ok":true,"message":"service unavailable","data":{"code":503}}
-```
-
-Useful to test:
-
-* retries
-* error handling
-* load balancers / gateways
-
----
-
-### CPU stress testing
-
-Trigger a **controlled CPU load** for a given duration.
+Inspect an incoming request:
 
 ```bash
-curl "http://localhost:8000/stress/cpu?duration=10s"
+curl http://localhost:8000/echo
 ```
-
-Parameters:
-
-| Query      | Required | Description                                 |
-| ---------- | -------- | ------------------------------------------- |
-| `duration` | yes      | Stress duration (`100ms`, `5s`, `2m`)       |
-| `cores`    | no       | Number of CPU cores (default `1`, or `max`) |
-
-Examples:
-
-```bash
-# Stress 1 core for 500ms
-curl "http://localhost:8000/stress/cpu?duration=500ms"
-
-# Stress all available cores for 10s
-curl "http://localhost:8000/stress/cpu?duration=10s&cores=max"
-```
-
-**Safety defaults**
-
-* maximum duration: **2 minutes**
-* runs synchronously
-* stops immediately if the client disconnects
-* non-root container image
-
-### Delayed responses
-
-Simulate slow or timing-sensitive services.
-
-```bash
-curl "http://localhost:8000/delay?duration=500ms"
-```
-
-Useful to test:
-
-* retries
-* client timeouts
-* ingress / gateway behavior
-* service mesh latency handling
-
-Safety limits:
-
-* maximum delay: **5 minutes**
-* request is canceled immediately if the client disconnects
-
-### Echo request inspector
-
-Echo back the incoming HTTP request for debugging and inspection.
-
-This endpoint reflects method, path, query parameters, headers, client/network information, and a bounded request body.
-
-```bash
-curl "http://localhost:8000/echo?q=foo"
-```
-
-Response (example):
-
-```json
-{
-  "ok": true,
-  "message": "echo",
-  "data": {
-    "method": "GET",
-    "path": "/echo",
-    "raw_query": "q=foo",
-    "query": { "q": ["foo"] },
-    "headers": { "User-Agent": ["curl/8.7.1"] },
-    "client_ip": "10.0.0.12",
-    "remote_addr": "10.0.0.12:54321",
-    "body": {
-      "content": "",
-      "bytes": 0,
-      "is_truncated": false
-    }
-  }
-}
-```
-
-Useful to test:
-
-* ingress / gateway header rewriting
-* service mesh behavior
-* client request formatting
-* proxy forwarding (X-Forwarded-For, X-Real-IP)
 
 ---
 
