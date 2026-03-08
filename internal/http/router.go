@@ -12,6 +12,8 @@ import (
 func NewRouter(readiness engine.Readiness) http.Handler {
 	mux := http.NewServeMux()
 
+	mux.Handle("GET /{$}", handlers.NewRootGetHandler())
+
 	mux.Handle("/echo", handlers.NewEchoAnyHandler())
 	mux.Handle("GET /delay", handlers.NewDelayGetHandler())
 	mux.Handle("GET /status/{code}", handlers.NewStatusHandler())
