@@ -13,8 +13,16 @@ COPY . .
 ARG TARGETOS
 ARG TARGETARCH
 
+ARG VERSION=dev
+ARG COMMIT=none
+ARG BUILD_DATE=unknown
+
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
-  go build -trimpath -ldflags="-s -w" -o /out/probelet ./main.go
+  go build -trimpath -ldflags="-s -w \
+  -X github.com/Alkindi42/probelet/internal/version.Version=$VERSION \
+  -X github.com/Alkindi42/probelet/internal/version.Commit=$COMMIT \
+  -X github.com/Alkindi42/probelet/internal/version.BuildDate=$BUILD_DATE" \
+  -o /out/probelet ./main.go
 
 FROM alpine:${ALPINE_VERSION} as runtime
 
