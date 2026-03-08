@@ -6,21 +6,17 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"runtime"
-	"strconv"
 	"time"
 
+	"github.com/Alkindi42/probelet/internal/app"
 	"github.com/Alkindi42/probelet/internal/engine"
 	"github.com/Alkindi42/probelet/internal/http/response"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
-var maxCores = runtime.GOMAXPROCS(0)
-
 const (
 	maxMemorySizeBytes      int64         = 1 << 30
 	maxMemoryStressDuration time.Duration = 5 * time.Minute
-	maxCPUStressDuration                  = 2 * time.Minute
 )
 
 // NewStressCPUGetHandler returns an HTTP handler that triggers CPU stress
@@ -30,43 +26,32 @@ func NewStressCPUGetHandler() http.Handler {
 		coresStr := r.URL.Query().Get("cores")
 		durationStr := r.URL.Query().Get("duration")
 
-		cores := 1
-		if coresStr == "max" {
-			cores = maxCores
-		} else if coresStr != "" {
-			c, err := strconv.Atoi(coresStr)
-
-			if err != nil || c <= 0 || c > maxCores {
-				response.JSONError(
-					w,
-					http.StatusBadRequest,
-					fmt.Sprintf("cores must be a number between 1 and %d or equal to 'max'", maxCores),
-				)
-				return
-			}
-			cores = c
+		req := app.CPUStressRequest{
+			Cores:    coresStr,
+			Duration: durationStr,
 		}
-
-		duration, err := parseDurationParam(durationStr, maxCPUStressDuration)
+		result, err := app.RunCPUStress(r.Context(), req)
 		if err != nil {
-			response.JSONError(w, http.StatusBadRequest, err.Error())
-			return
-		}
+			var validationErr *app.ValidationError
 
-		if err := engine.StressCPU(r.Context(), cores, duration); err != nil {
-			if errors.Is(err, context.Canceled) {
-				slog.Warn("client disconnected during cpu stress", "duration", duration.String())
+			switch {
+			case errors.As(err, &validationErr):
+				response.JSONError(w, http.StatusBadRequest, err.Error())
+				return
+
+			case errors.Is(err, context.Canceled):
+				slog.Warn("client disconnected during cpu stress", "duration", durationStr)
+				return
+
+			default:
+				response.JSONError(w, http.StatusInternalServerError, "cpu stress failed")
 				return
 			}
-
-			// Any other error is unexpected.
-			response.JSONError(w, http.StatusInternalServerError, "cpu stress failed")
-			return
 		}
 
 		response.JSON(w, http.StatusOK, "done", map[string]any{
-			"cores":    cores,
-			"duration": duration.String(),
+			"cores":    result.Cores,
+			"duration": result.Duration.String(),
 		})
 	})
 }
