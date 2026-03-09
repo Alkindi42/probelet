@@ -24,6 +24,17 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install Redocly CLI
+        run: npm install -g @redocly/cli@1.20.0
+
+      - name: Lint OpenAPI
+        run: redocly lint --format=github-actions
+
       - name: Verify gofmt
         run: |
           test -z "$(gofmt -l $(git ls-files '*.go'))" || (echo "gofmt required. Run: gofmt -w ." && exit 1)

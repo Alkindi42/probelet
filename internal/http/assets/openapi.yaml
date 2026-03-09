@@ -3,6 +3,9 @@ openapi: 3.0.3
 info:
   title: Probelet API
   version: 0.1.0
+  license:
+    name: MIT
+    url: https://github.com/Alkindi42/probelet/blob/main/LICENSE
   description: |
     Probelet is a lightweight HTTP service for simulating application and system
     behaviors in test, staging, and platform environments.
@@ -24,6 +27,8 @@ servers:
     description: Local Probelet instance
   - url: /
     description: Relative base URL when documentation is served by Probelet itself
+
+security: []
 
 tags:
   - name: documentation

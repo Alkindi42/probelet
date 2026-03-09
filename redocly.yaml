@@ -1,0 +1,14 @@
+apis:
+  probelet:
+    root: ./internal/http/assets/openapi.yaml
+
+extends:
+  - recommended
+
+rules:
+  no-server-example.com: off
+  no-unused-components: error
+  operation-4xx-response: off
+  operation-operationId: error
+  operation-summary: error
+  tag-description: error
