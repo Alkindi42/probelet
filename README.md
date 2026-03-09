@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/Alkindi42/probelet/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/Alkindi42/probelet/actions/workflows/ci.yaml)
 
-**Probelet** is a lightweight HTTP service designed to **simulate application and system behaviors** for testing platforms and orchestrators.
+**Probelet** is a lightweight tool for simulating application and system behaviors in test, staging, and platform environments.
+
+It can be used either as an HTTP service or as a local CLI for controlled stress workloads.
 
 It combines the simplicity of tools like `httpbin` with **controlled system stress capabilities**, making it ideal for:
 
@@ -12,6 +14,7 @@ It combines the simplicity of tools like `httpbin` with **controlled system stre
 * debugging timeouts and retry logic
 * inspecting incoming HTTP requests
 * exercising observability and monitoring stacks
+* running controlled CPU and memory stress locally or over HTTP
 
 ---
 
@@ -25,6 +28,11 @@ Verify it’s running:
 
 ```bash
 curl http://localhost:8000/healthz
+```
+
+Expected response:
+
+```json
 {"ok":true,"message":"healthy"}
 ```
 
@@ -64,6 +72,24 @@ Inspect an incoming request:
 curl http://localhost:8000/echo
 ```
 
+Run CPU stress locally from the CLI:
+
+```bash
+probelet stress cpu --duration 10s --cores max
+```
+
+Run memory stress locally from the CLI:
+
+```bash
+probelet stress memory --duration 30s --size 256Mi
+```
+
+Print the running build version:
+
+```bash
+probelet version
+```
+
 ---
 
 ## ☸️ Kubernetes
@@ -98,3 +124,7 @@ curl "http://localhost:8000/stress/cpu?duration=5s"
 
 Contributions and ideas are welcome.
 Feel free to open an issue or a pull request.
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
