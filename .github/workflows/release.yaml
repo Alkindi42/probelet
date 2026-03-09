@@ -6,8 +6,8 @@ on:
       - "v*"
 
 permissions:
-  contents: read
   packages: write
+  contents: write
 
 concurrency:
   group: release-${{ github.ref }}
@@ -19,8 +19,17 @@ jobs:
     permissions:
       contents: read
 
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      build_date: ${{ steps.build_date.outputs.value }}
+    steps:
+      - name: Set build date
+        id: build_date
+        run: echo "value=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
   docker:
-    needs: ci
+    needs: [ci, meta]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +45,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (tags, labels)
-        id: meta
+        id: docker_meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/probelet
@@ -49,7 +58,7 @@ jobs:
             org.opencontainers.image.title=probelet
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.version=${{ github.ref_name }}
-            org.opencontainers.image.created=${{ github.run_started_at }}
+            org.opencontainers.image.created=${{ needs.meta.outputs.build_date }}
             org.opencontainers.image.url=https://github.com/${{ github.repository }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=Lightweight HTTP service to simulate probe and stress behaviors for platform testing.
@@ -60,11 +69,104 @@ jobs:
           platforms: linux/amd64,linux/arm64
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             COMMIT=${{ github.sha }}
             VERSION=${{ github.ref_name }}
-            BUILD_DATE=${{ github.run_started_at }}
+            BUILD_DATE=${{ needs.meta.outputs.build_date }}
+
+  release:
+    needs: [docker, meta]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Prepare dist directory
+        run: mkdir -p dist build
+
+      - name: Build Linux amd64 archive
+        run: |
+          archive="probelet-${{ github.ref_name }}-linux-amd64"
+          dir="build/${archive}"
+
+          mkdir -p "${dir}"
+
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -trimpath -ldflags="-s -w \
+            -X github.com/Alkindi42/probelet/internal/version.Version=${{ github.ref_name }} \
+            -X github.com/Alkindi42/probelet/internal/version.Commit=${{ github.sha }} \
+            -X github.com/Alkindi42/probelet/internal/version.BuildDate=${{ needs.meta.outputs.build_date }}" \
+            -o "${dir}/probelet" ./main.go
+
+          cp LICENSE README.md "${dir}/"
+
+          tar -C build -czf "dist/${archive}.tar.gz" "${archive}"
+
+      - name: Build Linux arm64 archive
+        run: |
+          archive="probelet-${{ github.ref_name }}-linux-arm64"
+          dir="build/${archive}"
+
+          mkdir -p "${dir}"
+
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+            go build -trimpath -ldflags="-s -w \
+            -X github.com/Alkindi42/probelet/internal/version.Version=${{ github.ref_name }} \
+            -X github.com/Alkindi42/probelet/internal/version.Commit=${{ github.sha }} \
+            -X github.com/Alkindi42/probelet/internal/version.BuildDate=${{ needs.meta.outputs.build_date }}" \
+            -o "${dir}/probelet" ./main.go
+
+          cp LICENSE README.md "${dir}/"
+
+          tar -C build -czf "dist/${archive}.tar.gz" "${archive}"
+
+      - name: Build Darwin arm64 archive
+        run: |
+          archive="probelet-${{ github.ref_name }}-darwin-arm64"
+          dir="build/${archive}"
+
+          mkdir -p "${dir}"
+
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 \
+            go build -trimpath -ldflags="-s -w \
+            -X github.com/Alkindi42/probelet/internal/version.Version=${{ github.ref_name }} \
+            -X github.com/Alkindi42/probelet/internal/version.Commit=${{ github.sha }} \
+            -X github.com/Alkindi42/probelet/internal/version.BuildDate=${{ needs.meta.outputs.build_date }}" \
+            -o "${dir}/probelet" ./main.go
+
+          cp LICENSE README.md "${dir}/"
+
+          tar -C build -czf "dist/${archive}.tar.gz" "${archive}"
+
+      - name: Create checksums
+        run: |
+          cd dist
+          sha256sum *.tar.gz > "probelet-${{ github.ref_name }}-checksums.txt"
+
+      - name: Ensure GitHub Release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "${{ github.ref_name }}" >/dev/null 2>&1 || \
+          gh release create "${{ github.ref_name }}" \
+            --title "Probelet ${{ github.ref_name }}" \
+            --generate-notes
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            dist/probelet-${{ github.ref_name }}-linux-amd64.tar.gz \
+            dist/probelet-${{ github.ref_name }}-linux-arm64.tar.gz \
+            dist/probelet-${{ github.ref_name }}-darwin-arm64.tar.gz \
+            dist/probelet-${{ github.ref_name }}-checksums.txt \
+            --clobber
