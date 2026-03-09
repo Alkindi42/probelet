@@ -1,6 +1,9 @@
 # Probelet
 
 [![CI](https://github.com/Alkindi42/probelet/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/Alkindi42/probelet/actions/workflows/ci.yaml)
+[![Release](https://img.shields.io/github/v/release/Alkindi42/probelet?color=blue)](https://github.com/Alkindi42/probelet/releases)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker&logoColor=white)](https://ghcr.io/alkindi42/probelet)
+[![License](https://img.shields.io/github/license/Alkindi42/probelet?color=green)](LICENSE)
 
 **Probelet** is a lightweight tool for simulating application and system behaviors in test, staging, and platform environments.
 
@@ -40,11 +43,20 @@ Expected response:
 
 ## 📚 API documentation
 
-Probelet exposes an interactive API reference powered by OpenAPI.
+Probelet provides an interactive API reference powered by OpenAPI and Scalar.
 
-Once the service is running, open: [http://localhost:8000/docs](http://localhost:8000/docs)
+The documentation describes all available endpoints used to simulate
+application behavior, failure scenarios, and system stress workloads.
 
-The OpenAPI specification is also available at: [http://localhost:8000/openapi.yaml](http://localhost:8000/openapi.yaml)
+**Public documentation**
+
+[https://alkindi42.github.io/probelet/](https://alkindi42.github.io/probelet/)
+
+**Local documentation**
+
+When running Probelet locally: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+OpenAPI specification : [http://localhost:8000/openapi.yaml](http://localhost:8000/openapi.yaml)
 
 ## 🧪 Examples
 
