@@ -469,7 +469,82 @@ components:
           $ref: '#/components/schemas/StressMemoryData'
       additionalProperties: false
 
+    RootData:
+      type: object
+      required:
+        - version
+        - commit
+        - build_date
+        - docs
+        - openapi
+      properties:
+        version:
+          type: string
+          description: Version of the running Probelet binary.
+          example: v0.1.0
+        commit:
+          type: string
+          description: Git commit used to build the binary.
+          example: a1b2c3d
+        build_date:
+          type: string
+          description: Build timestamp of the running binary.
+          example: 2026-03-09T10:00:00Z
+        docs:
+          type: string
+          description: Relative path to the interactive API documentation.
+          example: /docs
+        openapi:
+          type: string
+          description: Relative path to the OpenAPI specification.
+          example: /openapi.yaml
+      additionalProperties: false
+
+    RootResponse:
+      type: object
+      required:
+        - ok
+        - message
+        - data
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+          enum: [probelet]
+        data:
+          $ref: '#/components/schemas/RootData'
+      additionalProperties: false
+
 paths:
+  /:
+    get:
+      tags: [documentation]
+      summary: Service information
+      description: |
+        Returns basic information about the running Probelet instance.
+
+        This endpoint provides build metadata and discovery links to the
+        API documentation and OpenAPI specification.
+
+        It can be used to quickly verify the running version of the service
+        and locate the available documentation endpoints.
+      operationId: getRoot
+      responses:
+        '200':
+          description: Probelet service information.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RootResponse'
   /healthz:
     get:
       tags: [probes]
