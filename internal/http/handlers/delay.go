@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Alkindi42/probelet/internal/app"
 	"github.com/Alkindi42/probelet/internal/http/response"
 )
 
@@ -22,7 +23,7 @@ func NewDelayGetHandler() http.Handler {
 			return
 		}
 
-		duration, err := parseDurationParam(durationStr, maxDelay)
+		duration, err := app.ParseDurationParam(durationStr, maxDelay)
 		if err != nil {
 			response.JSONError(w, http.StatusBadRequest, err.Error())
 			return

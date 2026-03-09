@@ -1,4 +1,4 @@
-package handlers
+package app
 
 import (
 	"strings"
@@ -24,7 +24,7 @@ func TestParseDurationParam(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := parseDurationParam(tc.duration, tc.max)
+			got, err := ParseDurationParam(tc.duration, tc.max)
 
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("ParseDurationParam() error = %v, wantErr %v", err, tc.wantErr)
@@ -59,7 +59,7 @@ func TestParseOptionalDurationParam(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := parseOptionalDurationParam(tc.duration, tc.max)
+			got, err := ParseOptionalDurationParam(tc.duration, tc.max)
 
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("ParseOptionalDurationParam() error = %v, wantErr %v", err, tc.wantErr)

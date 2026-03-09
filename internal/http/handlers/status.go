@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Alkindi42/probelet/internal/app"
 	"github.com/Alkindi42/probelet/internal/http/response"
 )
 
@@ -37,7 +38,7 @@ func NewStatusHandler() http.Handler {
 		}
 
 		durationStr := r.URL.Query().Get("duration")
-		duration, err := parseOptionalDurationParam(durationStr, maxStatusDelay)
+		duration, err := app.ParseOptionalDurationParam(durationStr, maxStatusDelay)
 		if err != nil {
 			response.JSONError(w, http.StatusBadRequest, err.Error())
 			return

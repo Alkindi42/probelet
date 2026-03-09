@@ -16,9 +16,9 @@ func (e *ValidationError) Error() string {
 	return e.Message
 }
 
-// parseDurationParam validates a duration string against format and a maximum limit.
+// ParseDurationParam validates a duration string against format and a maximum limit.
 // It returns the parsed time.Duration or an error with a user-friendly message.
-func parseDurationParam(d string, max time.Duration) (time.Duration, error) {
+func ParseDurationParam(d string, max time.Duration) (time.Duration, error) {
 	if d == "" {
 		return 0, errors.New("duration is required (e.g. 100ms, 5s, 2m)")
 	}
@@ -39,14 +39,14 @@ func parseDurationParam(d string, max time.Duration) (time.Duration, error) {
 	return duration, nil
 }
 
-// parseOptionalDurationParam attempts to parse a duration string.
+// ParseOptionalDurationParam attempts to parse a duration string.
 // It returns 0 and no error if the string is empty, allowing for optional
 // configuration. If a value is provided, it must satisfy all constraints
 // defined in ParseDurationParam.
-func parseOptionalDurationParam(d string, max time.Duration) (time.Duration, error) {
+func ParseOptionalDurationParam(d string, max time.Duration) (time.Duration, error) {
 	if d == "" {
 		return 0, nil
 	}
 
-	return parseDurationParam(d, max)
+	return ParseDurationParam(d, max)
 }

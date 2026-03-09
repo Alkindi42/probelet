@@ -67,7 +67,7 @@ func RunCPUStress(ctx context.Context, req CPUStressRequest) (*CPUStressResult, 
 		result.Cores = c
 	}
 
-	duration, err := parseDurationParam(req.Duration, maxCPUStressDuration)
+	duration, err := ParseDurationParam(req.Duration, maxCPUStressDuration)
 	if err != nil {
 		return nil, &ValidationError{
 			Message: err.Error(),
@@ -94,7 +94,7 @@ func RunMemoryStress(ctx context.Context, req MemoryStressRequest) (*MemoryStres
 		Size: req.Size,
 	}
 
-	duration, err := parseDurationParam(req.Duration, maxMemoryStressDuration)
+	duration, err := ParseDurationParam(req.Duration, maxMemoryStressDuration)
 	if err != nil {
 		return nil, &ValidationError{
 			Message: err.Error(),
