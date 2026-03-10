@@ -21,7 +21,9 @@ It combines the simplicity of tools like `httpbin` with **controlled system stre
 
 ---
 
-## 🚀 Quick start (Docker)
+## 🚀 Installation
+
+### Docker
 
 ```bash
 docker run --rm -p 8000:8000 ghcr.io/alkindi42/probelet:latest
@@ -37,6 +39,17 @@ Expected response:
 
 ```json
 {"ok":true,"message":"healthy"}
+```
+
+### Binary
+
+Download a release from: [https://github.com/Alkindi42/probelet/releases](https://github.com/Alkindi42/probelet/releases).
+
+Example:
+
+```bash
+tar -xzf probelet-v0.1.0-linux-amd64.tar.gz
+./probelet serve
 ```
 
 ---
