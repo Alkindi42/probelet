@@ -41,7 +41,9 @@ var serveCmd = &cobra.Command{
 			readinessCtl.StartInitialDelay(runCtx, serveOpts.initialReadinessDelay)
 		}
 
-		router := apphttp.NewRouter(readinessCtl)
+		router := apphttp.NewRouter(readinessCtl, apphttp.RouterConfig{
+			ProbeletToken: os.Getenv("PROBELET_TOKEN"),
+		})
 		server := &http.Server{
 			Addr:    addr,
 			Handler: router,

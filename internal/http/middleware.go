@@ -3,17 +3,23 @@ package http
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Alkindi42/probelet/internal/http/response"
 )
 
 type requestIDKey struct{}
 
-const requestIDHeader = "X-Request-Id"
+const (
+	requestIDHeader     = "X-Request-Id"
+	probeletTokenHeader = "X-Probelet-Token"
+)
 
 // GetRequestID returns the request ID from ctx, if present.
 func GetRequestID(ctx context.Context) (string, bool) {
@@ -57,6 +63,27 @@ func RequestID(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), requestIDKey{}, id)
 		w.Header().Set(requestIDHeader, id)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// RequireToken is middleware that protects an HTTP handler with a static token.
+//
+// The client must provide the expected token in the X-Probelet-Token header.
+// If the header is missing or invalid, the middleware responds with 401 Unauthorized.
+func RequireToken(secret string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := r.Header.Get(probeletTokenHeader)
+		if token == "" {
+			response.JSONError(w, http.StatusUnauthorized, "missing "+probeletTokenHeader+" header")
+			return
+		}
+
+		if subtle.ConstantTimeCompare([]byte(token), []byte(secret)) != 1 {
+			response.JSONError(w, http.StatusUnauthorized, "invalid token")
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
 

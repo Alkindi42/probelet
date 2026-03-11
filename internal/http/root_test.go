@@ -10,7 +10,7 @@ import (
 
 func TestRoot_GET(t *testing.T) {
 	fakeReadiness := FakeReadiness{ready: true}
-	server := apphttp.NewRouter(&fakeReadiness)
+	server := apphttp.NewRouter(&fakeReadiness, apphttp.RouterConfig{})
 
 	rr := doJSON(t, server, http.MethodGet, "/", nil)
 	env := assertJSONResponse(t, rr, http.StatusOK, true, "probelet")

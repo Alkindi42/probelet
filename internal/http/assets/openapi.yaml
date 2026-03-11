@@ -22,6 +22,10 @@ info:
       - safe by default
       - easy to run as a single binary or container
 
+    Authentication:
+      - public discovery and probe endpoints can remain unauthenticated
+      - protected endpoints require `X-Probelet-Token` when `PROBELET_TOKEN` is set
+
 servers:
   - url: http://localhost:8000
     description: Local Probelet instance
@@ -41,6 +45,17 @@ tags:
     description: Endpoints for triggering bounded CPU and memory pressure.
 
 components:
+  securitySchemes:
+    ProbeletToken:
+      type: apiKey
+      in: header
+      name: X-Probelet-Token
+      description: |
+        Static token authentication for protected Probelet endpoints.
+
+        This header is required only when Probelet is started with the
+        `PROBELET_TOKEN` environment variable set.
+
   parameters:
 
     DelayDuration:
@@ -630,7 +645,12 @@ paths:
         This is useful for simulating dependency failures, draining, rollout delays,
         or other not-ready scenarios. Manual updates override any in-progress
         initial readiness delay.
+
+        When Probelet is started with `PROBELET_TOKEN` set, this endpoint requires
+        the `X-Probelet-Token` header.
       operationId: postReadyz
+      security:
+        - ProbeletToken: []
       requestBody:
         required: true
         content:
@@ -664,6 +684,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /delay:
     get:
@@ -675,7 +708,12 @@ paths:
         This is useful for testing client-side timeouts, retries, and slow upstream behaviour.
 
         The duration is required, must be greater than zero, and must not exceed 5 minutes.
+
+        When Probelet is started with `PROBELET_TOKEN` set, this endpoint requires
+        the `X-Probelet-Token` header.
       operationId: getDelay
+      security:
+        - ProbeletToken: []
       parameters:
         - $ref: '#/components/parameters/DelayDuration'
       responses:
@@ -705,6 +743,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /echo:
     get:
@@ -723,7 +774,12 @@ paths:
         The current implementation accepts any HTTP method.
 
         GET and POST are documented here as representative examples.
+
+        When Probelet is started with `PROBELET_TOKEN` set, this endpoint requires
+        the `X-Probelet-Token` header.
       operationId: getEcho
+      security:
+        - ProbeletToken: []
       responses:
         '200':
           description: Request details echoed back.
@@ -751,6 +807,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags: [debugging]
       summary: Echo request details with body
@@ -762,7 +831,12 @@ paths:
         representative example for requests carrying a body.
 
         The request body is read and returned in a bounded representation.
+
+        When Probelet is started with `PROBELET_TOKEN` set, this endpoint requires
+        the `X-Probelet-Token` header.
       operationId: postEcho
+      security:
+        - ProbeletToken: []
       requestBody:
         required: false
         content:
@@ -804,6 +878,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /status/{code}:
     get:
@@ -820,7 +907,12 @@ paths:
           - as an input validation error
 
         For response codes that do not normally carry a response body (for example 1xx, 204, or 304), the JSON envelope may be omitted by the HTTP server.
+
+        When Probelet is started with `PROBELET_TOKEN` set, this endpoint requires
+        the `X-Probelet-Token` header.
       operationId: getStatus
+      security:
+        - ProbeletToken: []
       parameters:
         - $ref: '#/components/parameters/StatusCode'
         - $ref: '#/components/parameters/StatusDelay'
@@ -843,6 +935,19 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/StatusResponse'
                   - $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         default:
           description: Requested status response.
           headers:
@@ -866,7 +971,12 @@ paths:
 
         This endpoint is intended for testing autoscaling, throttling, alerting,
         and general CPU pressure behaviour.
+
+        When Probelet is started with `PROBELET_TOKEN` set, this endpoint requires
+        the `X-Probelet-Token` header.
       operationId: getStressCPU
+      security:
+        - ProbeletToken: []
       parameters:
         - $ref: '#/components/parameters/StressCPUDuration'
         - $ref: '#/components/parameters/Cores'
@@ -886,6 +996,19 @@ paths:
                 $ref: '#/components/schemas/StressCPUResponse'
         '400':
           description: Invalid stress parameters.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
@@ -923,7 +1046,12 @@ paths:
 
         This endpoint is useful for testing memory pressure, OOM behaviour,
         eviction scenarios, and alerting.
+
+        When Probelet is started with `PROBELET_TOKEN` set, this endpoint requires
+        the `X-Probelet-Token` header.
       operationId: getStressMemory
+      security:
+        - ProbeletToken: []
       parameters:
         - $ref: '#/components/parameters/StressMemoryDuration'
         - $ref: '#/components/parameters/Size'
@@ -954,6 +1082,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal memory stress failure.
           headers:
@@ -970,6 +1111,10 @@ paths:
 
   /docs:
     get:
+      description: |
+        Returns the interactive API documentation for the running Probelet instance.
+
+        This endpoint serves the embedded Scalar-based API reference UI.
       tags: [documentation]
       summary: Interactive API documentation
       operationId: getDocs
@@ -986,6 +1131,11 @@ paths:
 
   /openapi.yaml:
     get:
+      description: |
+        Returns the OpenAPI specification for the running Probelet instance.
+
+        This document can be used by API documentation tools, clients,
+        and external integrations.
       tags: [documentation]
       summary: OpenAPI specification
       operationId: getOpenAPISpec

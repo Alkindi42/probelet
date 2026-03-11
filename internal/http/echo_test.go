@@ -40,7 +40,7 @@ type echoData struct {
 
 func TestEcho_GET_Default(t *testing.T) {
 	fakeReadiness := FakeReadiness{ready: true}
-	server := apphttp.NewRouter(&fakeReadiness)
+	server := apphttp.NewRouter(&fakeReadiness, apphttp.RouterConfig{})
 
 	rr := doJSON(t, server, http.MethodGet, "/echo?q=foo", nil)
 	env := assertJSONResponse(t, rr, http.StatusOK, true, "echo")
@@ -68,7 +68,7 @@ func TestEcho_GET_Default(t *testing.T) {
 
 func TestEcho_POST_BodyAndHeaders(t *testing.T) {
 	fakeReadiness := FakeReadiness{ready: true}
-	server := apphttp.NewRouter(&fakeReadiness)
+	server := apphttp.NewRouter(&fakeReadiness, apphttp.RouterConfig{})
 
 	reqBody := bytes.NewBufferString(`{"foo":"bar"}`)
 	req := httptest.NewRequest(http.MethodPost, "/echo", reqBody)
@@ -109,7 +109,7 @@ func TestEcho_POST_BodyAndHeaders(t *testing.T) {
 
 func TestEcho_POST_Truncation(t *testing.T) {
 	fakeReadiness := FakeReadiness{ready: true}
-	server := apphttp.NewRouter(&fakeReadiness)
+	server := apphttp.NewRouter(&fakeReadiness, apphttp.RouterConfig{})
 
 	const max = 64 << 10
 	payload := bytes.Repeat([]byte("a"), max+1)
@@ -135,7 +135,7 @@ func TestEcho_POST_Truncation(t *testing.T) {
 
 func TestEcho_DoesNotInjectRequestID_WhenMissing(t *testing.T) {
 	fakeReadiness := FakeReadiness{ready: true}
-	server := apphttp.NewRouter(&fakeReadiness)
+	server := apphttp.NewRouter(&fakeReadiness, apphttp.RouterConfig{})
 
 	req := httptest.NewRequest(http.MethodGet, "/echo", nil)
 	rr := httptest.NewRecorder()
@@ -149,7 +149,7 @@ func TestEcho_DoesNotInjectRequestID_WhenMissing(t *testing.T) {
 
 func TestEcho_PreservesAndEchoesRequestID_WhenProvided(t *testing.T) {
 	fakeReadiness := FakeReadiness{ready: true}
-	server := apphttp.NewRouter(&fakeReadiness)
+	server := apphttp.NewRouter(&fakeReadiness, apphttp.RouterConfig{})
 
 	req := httptest.NewRequest(http.MethodGet, "/echo", nil)
 	req.Header.Set("X-Request-Id", "toot")

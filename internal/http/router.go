@@ -1,4 +1,3 @@
-// Package http provides the main HTTP routing and middleware setup for the application.package http
 package http
 
 import (
@@ -8,26 +7,59 @@ import (
 	"github.com/Alkindi42/probelet/internal/http/handlers"
 )
 
+// RouterConfig defines HTTP router configuration.
+type RouterConfig struct {
+	// ProbeletToken enables token protection for selected endpoints when non-empty.
+	ProbeletToken string
+}
+
 // NewRouter returns the application's root HTTP handler.
-func NewRouter(readiness engine.Readiness) http.Handler {
+func NewRouter(readiness engine.Readiness, cfg RouterConfig) http.Handler {
 	mux := http.NewServeMux()
 
-	mux.Handle("GET /{$}", handlers.NewRootGetHandler())
+	rootHandler := handlers.NewRootGetHandler()
 
-	mux.Handle("/echo", handlers.NewEchoAnyHandler())
-	mux.Handle("GET /delay", handlers.NewDelayGetHandler())
-	mux.Handle("GET /status/{code}", handlers.NewStatusHandler())
-	// Liveness
-	mux.Handle("GET /healthz", handlers.NewHealthzHandler())
-	// Readiness
-	mux.Handle("GET /readyz", handlers.NewReadyzGetHandler(readiness))
-	mux.Handle("POST /readyz", handlers.NewReadyzPostHandler(readiness))
+	echoHandler := handlers.NewEchoAnyHandler()
+	statusHandler := handlers.NewStatusHandler()
+	delayHandler := handlers.NewDelayGetHandler()
+	// Health probes
+	healthzHandler := handlers.NewHealthzHandler()
+	readyzGetHandler := handlers.NewReadyzGetHandler(readiness)
+	readyzPostHandler := handlers.NewReadyzPostHandler(readiness)
 	// Stress
-	mux.Handle("GET /stress/cpu", handlers.NewStressCPUGetHandler())
-	mux.Handle("GET /stress/memory", handlers.NewStressMemoryGetHandler())
-	// Documentation
-	mux.Handle("GET /docs", handlers.NewDocsHandler())
-	mux.Handle("GET /openapi.yaml", handlers.NewOpenAPIHandler())
+	stressCPUHandler := handlers.NewStressCPUGetHandler()
+	stressMemoryHandler := handlers.NewStressMemoryGetHandler()
+	// Docs
+	docsHandler := handlers.NewDocsHandler()
+	openAPIHandler := handlers.NewOpenAPIHandler()
 
-	return RequestID(Logger(mux))
+	probeletToken := cfg.ProbeletToken
+	protected := probeletToken != ""
+
+	if protected {
+		echoHandler = RequireToken(probeletToken, echoHandler)
+		statusHandler = RequireToken(probeletToken, statusHandler)
+		delayHandler = RequireToken(probeletToken, delayHandler)
+		readyzPostHandler = RequireToken(probeletToken, readyzPostHandler)
+		stressCPUHandler = RequireToken(probeletToken, stressCPUHandler)
+		stressMemoryHandler = RequireToken(probeletToken, stressMemoryHandler)
+	}
+
+	mux.Handle("GET /{$}", rootHandler)
+	mux.Handle("GET /healthz", healthzHandler)
+	mux.Handle("GET /readyz", readyzGetHandler)
+	mux.Handle("POST /readyz", readyzPostHandler)
+	mux.Handle("/echo", echoHandler)
+	mux.Handle("GET /delay", delayHandler)
+	mux.Handle("GET /status/{code}", statusHandler)
+	mux.Handle("GET /stress/cpu", stressCPUHandler)
+	mux.Handle("GET /stress/memory", stressMemoryHandler)
+	mux.Handle("GET /docs", docsHandler)
+	mux.Handle("GET /openapi.yaml", openAPIHandler)
+
+	var handler http.Handler = mux
+	handler = Logger(handler)
+	handler = RequestID(handler)
+
+	return handler
 }

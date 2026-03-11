@@ -5,11 +5,11 @@
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker&logoColor=white)](https://ghcr.io/alkindi42/probelet)
 [![License](https://img.shields.io/github/license/Alkindi42/probelet?color=green)](LICENSE)
 
-**Probelet** is a lightweight tool for simulating application and system behaviors in test, staging, and platform environments.
+**Probelet** provides minimal failure primitives for platform testing.
 
 It can be used either as an HTTP service or as a local CLI for controlled stress workloads.
 
-It combines the simplicity of tools like `httpbin` with **controlled system stress capabilities**, making it ideal for:
+It combines the simplicity of tools like **httpbin** with **controlled system stress capabilities**, making it ideal for:
 
 * testing Kubernetes liveness and readiness probes
 * validating autoscaling (HPA)
@@ -48,7 +48,7 @@ Download a release from: [https://github.com/Alkindi42/probelet/releases](https:
 Example:
 
 ```bash
-tar -xzf probelet-v0.1.0-linux-amd64.tar.gz
+tar -xzf probelet-<version>-linux-amd64.tar.gz
 ./probelet serve
 ```
 
@@ -69,7 +69,31 @@ application behavior, failure scenarios, and system stress workloads.
 
 When running Probelet locally: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-OpenAPI specification : [http://localhost:8000/openapi.yaml](http://localhost:8000/openapi.yaml)
+OpenAPI specification: [http://localhost:8000/openapi.yaml](http://localhost:8000/openapi.yaml)
+
+### 🔐 Authentication
+
+Probelet can optionally protect selected endpoints with a static token.
+
+Set the `PROBELET_TOKEN` environment variable when starting the service:
+
+```bash
+PROBELET_TOKEN=my-secret-token ./probelet serve
+```
+
+Then send the token in the `X-Probelet-Token` header when calling a protected endpoint:
+
+```bash
+curl -H "X-Probelet-Token: my-secret-token" "http://localhost:8000/delay?duration=5s"
+```
+
+Public endpoints remain accessible without authentication:
+
+* `/`
+* `/healthz`
+* `/readyz`
+* `/docs`
+* `/openapi.yaml`
 
 ## 🧪 Examples
 

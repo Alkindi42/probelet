@@ -131,7 +131,7 @@ func TestStressCPU_GET(t *testing.T) {
 	}
 
 	fakeReadiness := FakeReadiness{ready: true}
-	server := apphttp.NewRouter(&fakeReadiness)
+	server := apphttp.NewRouter(&fakeReadiness, apphttp.RouterConfig{})
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

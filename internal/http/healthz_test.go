@@ -10,7 +10,7 @@ import (
 
 func TestHealthz_GeneratesRequestID(t *testing.T) {
 	fakeReadiness := FakeReadiness{ready: true}
-	server := apphttp.NewRouter(&fakeReadiness)
+	server := apphttp.NewRouter(&fakeReadiness, apphttp.RouterConfig{})
 
 	rr := doJSON(t, server, http.MethodGet, "/healthz", nil)
 	_ = assertJSONResponse(t, rr, http.StatusOK, true, "healthy")
@@ -22,7 +22,7 @@ func TestHealthz_GeneratesRequestID(t *testing.T) {
 
 func TestHealthz_PreservesIncomingRequestID(t *testing.T) {
 	fakeReadiness := FakeReadiness{ready: true}
-	server := apphttp.NewRouter(&fakeReadiness)
+	server := apphttp.NewRouter(&fakeReadiness, apphttp.RouterConfig{})
 
 	requestID := "alkindi"
 
