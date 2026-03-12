@@ -17,7 +17,7 @@ It combines the simplicity of tools like **httpbin** with **controlled system st
 * debugging timeouts and retry logic
 * inspecting incoming HTTP requests
 * exercising observability and monitoring stacks
-* running controlled CPU and memory stress locally or over HTTP
+* running controlled CPU, memory, and disk stress locally or over HTTP
 
 ---
 
@@ -121,6 +121,12 @@ Inspect an incoming request:
 curl http://localhost:8000/echo
 ```
 
+Trigger disk pressure:
+
+```bash
+curl "http://localhost:8000/stress/disk?duration=10s&size=256Mi" 
+```
+
 Run CPU stress locally from the CLI:
 
 ```bash
@@ -131,6 +137,12 @@ Run memory stress locally from the CLI:
 
 ```bash
 probelet stress memory --duration 30s --size 256Mi
+```
+
+Run disk stress locally from the CLI:
+
+```bash
+probelet stress disk --duration 30s --size 256Mi
 ```
 
 Print the running build version:

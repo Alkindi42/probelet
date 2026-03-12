@@ -8,7 +8,7 @@ import (
 var stressCmd = &cobra.Command{
 	Use:   "stress",
 	Short: "Run controlled system stress workloads",
-	Long: `Run controlled system stress workloads such as CPU or memory pressure.
+	Long: `Run controlled system stress workloads such as CPU, memory or disk pressure.
 
 This command is useful for testing autoscaling, resource limits,
 alerting, and failure scenarios in containerized or distributed environments.

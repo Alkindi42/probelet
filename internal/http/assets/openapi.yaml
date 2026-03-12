@@ -14,7 +14,7 @@ info:
       - test liveness and readiness probes
       - simulate delayed or failing upstreams
       - inspect incoming HTTP requests
-      - trigger bounded CPU and memory stress
+      - trigger bounded CPU, memory, and disk stress
 
     Probelet is intentionally:
       - stateless
@@ -42,7 +42,7 @@ tags:
   - name: debugging
     description: Endpoints for simulating HTTP behaviour and inspecting requests.
   - name: stress
-    description: Endpoints for triggering bounded CPU and memory pressure.
+    description: Endpoints for triggering bounded CPU, memory, and disk pressure.
 
 components:
   securitySchemes:
@@ -98,6 +98,40 @@ components:
         Maximum supported value: `5m`.
 
         The duration starts after allocation completes.
+      schema:
+        type: string
+        example: 10s
+
+    DiskSize:
+      name: size
+      in: query
+      required: true
+      description: |
+        Disk size to write.
+
+        The value is parsed using Kubernetes quantity syntax via
+        `resource.ParseQuantity`, so values like `64Mi`, `256Mi`, `1Gi`
+        are accepted.
+
+        If no suffix is provided, the value is interpreted as bytes.
+
+        Maximum supported value: `5Gi`.
+      schema:
+        type: string
+        example: 1Gi
+
+    StressDiskDuration:
+      name: duration
+      in: query
+      required: true
+      description: |
+        Required disk stress duration parsed using Go's `time.ParseDuration`.
+
+        The value must be greater than zero.
+
+        Maximum supported value: `5m`.
+
+        The duration starts after write completes.
       schema:
         type: string
         example: 10s
@@ -487,6 +521,39 @@ components:
           enum: [done]
         data:
           $ref: '#/components/schemas/StressMemoryData'
+      additionalProperties: false
+
+    StressDiskData:
+      type: object
+      required:
+        - size
+        - bytes
+        - duration
+      properties:
+        size:
+          type: string
+        bytes:
+          type: integer
+          format: int64
+        duration:
+          type: string
+      additionalProperties: false
+
+    StressDiskResponse:
+      type: object
+      required:
+        - ok
+        - message
+        - data
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        message:
+          type: string
+          enum: [done]
+        data:
+          $ref: '#/components/schemas/StressDiskData'
       additionalProperties: false
 
     RootData:
@@ -1097,6 +1164,81 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Internal memory stress failure.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /stress/disk:
+    get:
+      tags: [stress]
+      summary: Stress disk for a bounded duration
+      description: |
+        Writes files to a temporary working directory until the requested size is reached,
+        then keeps that disk space allocated for the requested duration.
+
+        The requested duration starts after the write completes.
+
+        This endpoint is useful for testing disk pressure, ephemeral storage limits,
+        eviction scenarios, and disk-related alerting.
+
+        When Probelet is started with `PROBELET_TOKEN` set, this endpoint requires
+        the `X-Probelet-Token` header.
+      operationId: getStressDisk
+      security:
+        - ProbeletToken: []
+      parameters:
+        - $ref: '#/components/parameters/StressDiskDuration'
+        - $ref: '#/components/parameters/DiskSize'
+      responses:
+        '200':
+          description: Disk stress completed.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StressDiskResponse'
+        '400':
+          description: Invalid stress parameters.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal disk stress failure.
           headers:
             X-Request-Id:
               $ref: '#/components/headers/XRequestId'
