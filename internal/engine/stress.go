@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -97,14 +99,64 @@ func StressMemory(ctx context.Context, size int64, duration time.Duration) error
 		remaining -= allocSize
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, duration)
+	waitCtx, cancel := context.WithTimeout(ctx, duration)
 	defer cancel()
 
-	<-ctx.Done()
+	<-waitCtx.Done()
 
-	err := ctx.Err()
+	err := waitCtx.Err()
 	if errors.Is(err, context.DeadlineExceeded) {
 		return nil
 	}
+	return err
+}
+
+// StressDisk writes size bytes into workDir and keeps them allocated for duration.
+// It returns early if ctx is canceled.
+func StressDisk(ctx context.Context, size int64, duration time.Duration, workDir string) error {
+	const blockSize = 32 * 1024 * 1024
+
+	i := 1
+	remaining := size
+	buf := make([]byte, blockSize)
+
+	for remaining > 0 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
+		n := min(blockSize, remaining)
+
+		f, err := os.Create(filepath.Join(workDir, strconv.Itoa(i)))
+		if err != nil {
+			return err
+		}
+
+		if _, err := f.Write(buf[:n]); err != nil {
+			_ = f.Close()
+			return err
+		}
+		if err := f.Sync(); err != nil {
+			_ = f.Close()
+			return err
+		}
+		if err := f.Close(); err != nil {
+			return err
+		}
+
+		i++
+		remaining -= n
+	}
+
+	waitCtx, cancel := context.WithTimeout(ctx, duration)
+	defer cancel()
+
+	<-waitCtx.Done()
+
+	err := waitCtx.Err()
+	if errors.Is(err, context.DeadlineExceeded) {
+		return nil
+	}
+
 	return err
 }

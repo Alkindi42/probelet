@@ -29,6 +29,7 @@ func NewRouter(readiness engine.Readiness, cfg RouterConfig) http.Handler {
 	// Stress
 	stressCPUHandler := handlers.NewStressCPUGetHandler()
 	stressMemoryHandler := handlers.NewStressMemoryGetHandler()
+	stressDiskHandler := handlers.NewStressDiskGetHandler()
 	// Docs
 	docsHandler := handlers.NewDocsHandler()
 	openAPIHandler := handlers.NewOpenAPIHandler()
@@ -43,6 +44,7 @@ func NewRouter(readiness engine.Readiness, cfg RouterConfig) http.Handler {
 		readyzPostHandler = RequireToken(probeletToken, readyzPostHandler)
 		stressCPUHandler = RequireToken(probeletToken, stressCPUHandler)
 		stressMemoryHandler = RequireToken(probeletToken, stressMemoryHandler)
+		stressDiskHandler = RequireToken(probeletToken, stressDiskHandler)
 	}
 
 	mux.Handle("GET /{$}", rootHandler)
@@ -53,6 +55,7 @@ func NewRouter(readiness engine.Readiness, cfg RouterConfig) http.Handler {
 	mux.Handle("GET /delay", delayHandler)
 	mux.Handle("GET /status/{code}", statusHandler)
 	mux.Handle("GET /stress/cpu", stressCPUHandler)
+	mux.Handle("GET /stress/disk", stressDiskHandler)
 	mux.Handle("GET /stress/memory", stressMemoryHandler)
 	mux.Handle("GET /docs", docsHandler)
 	mux.Handle("GET /openapi.yaml", openAPIHandler)

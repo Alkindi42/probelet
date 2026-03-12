@@ -84,3 +84,41 @@ func NewStressMemoryGetHandler() http.Handler {
 		})
 	})
 }
+
+// NewStressDiskGetHandler returns an HTTP handler that triggers disk stress
+// for a given size and duration.
+func NewStressDiskGetHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sizeStr := r.URL.Query().Get("size")
+		durationStr := r.URL.Query().Get("duration")
+
+		req := app.DiskStressRequest{
+			Size:     sizeStr,
+			Duration: durationStr,
+		}
+		result, err := app.RunDiskStress(r.Context(), req)
+		if err != nil {
+			var validationErr *app.ValidationError
+
+			switch {
+			case errors.As(err, &validationErr):
+				response.JSONError(w, http.StatusBadRequest, err.Error())
+				return
+
+			case errors.Is(err, context.Canceled):
+				slog.Warn("client disconnected during disk stress", "duration", durationStr)
+				return
+
+			default:
+				response.JSONError(w, http.StatusInternalServerError, "disk stress failed")
+				return
+			}
+		}
+
+		response.JSON(w, http.StatusOK, "done", map[string]any{
+			"size":     result.Size,
+			"bytes":    result.Bytes,
+			"duration": result.Duration.String(),
+		})
+	})
+}

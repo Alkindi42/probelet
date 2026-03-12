@@ -40,9 +40,10 @@ type MemoryStressResult struct {
 var maxCores = runtime.GOMAXPROCS(0)
 
 const (
-	maxCPUStressDuration                  = 2 * time.Minute
-	maxMemorySizeBytes      int64         = 1 << 30
+	GiB                     int64         = 1 << 30
+	maxCPUStressDuration    time.Duration = 2 * time.Minute
 	maxMemoryStressDuration time.Duration = 5 * time.Minute
+	maxMemorySizeBytes      int64         = 1 * GiB
 )
 
 // RunCPUStress validates the request and runs the CPU stress workload.
