@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -16,15 +18,22 @@ failure scenarios, and controlled system stress workloads.
 It can run as an HTTP service or as a local CLI for bounded CPU, memory,
 and disk stress operations.`,
 	SilenceErrors: true,
+	SilenceUsage:  true,
 }
 
 func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
+	cmd, err := rootCmd.ExecuteC()
+	if err == nil {
+		return
 	}
-}
 
-func init() {
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
+
+	msg := err.Error()
+	if strings.Contains(msg, "unknown command") || strings.Contains(msg, "unknown flag") {
+		_, _ = fmt.Fprintln(os.Stderr)
+		_ = cmd.Help()
+	}
+
+	os.Exit(1)
 }
