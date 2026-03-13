@@ -34,6 +34,8 @@ func NewRouter(readiness engine.Readiness, cfg RouterConfig) http.Handler {
 	docsHandler := handlers.NewDocsHandler()
 	openAPIHandler := handlers.NewOpenAPIHandler()
 
+	flakyHandler := handlers.NewFlakyGetHandler()
+
 	probeletToken := cfg.ProbeletToken
 	protected := probeletToken != ""
 
@@ -41,6 +43,7 @@ func NewRouter(readiness engine.Readiness, cfg RouterConfig) http.Handler {
 		echoHandler = RequireToken(probeletToken, echoHandler)
 		statusHandler = RequireToken(probeletToken, statusHandler)
 		delayHandler = RequireToken(probeletToken, delayHandler)
+		flakyHandler = RequireToken(probeletToken, flakyHandler)
 		readyzPostHandler = RequireToken(probeletToken, readyzPostHandler)
 		stressCPUHandler = RequireToken(probeletToken, stressCPUHandler)
 		stressMemoryHandler = RequireToken(probeletToken, stressMemoryHandler)
@@ -52,6 +55,7 @@ func NewRouter(readiness engine.Readiness, cfg RouterConfig) http.Handler {
 	mux.Handle("GET /readyz", readyzGetHandler)
 	mux.Handle("POST /readyz", readyzPostHandler)
 	mux.Handle("/echo", echoHandler)
+	mux.Handle("GET /flaky", flakyHandler)
 	mux.Handle("GET /delay", delayHandler)
 	mux.Handle("GET /status/{code}", statusHandler)
 	mux.Handle("GET /stress/cpu", stressCPUHandler)

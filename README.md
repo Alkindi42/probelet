@@ -97,6 +97,8 @@ Public endpoints remain accessible without authentication:
 
 ## 🧪 Examples
 
+### API
+
 Simulate a slow service:
 
 ```bash
@@ -127,25 +129,33 @@ Trigger disk pressure:
 curl "http://localhost:8000/stress/disk?duration=10s&size=256Mi" 
 ```
 
-Run CPU stress locally from the CLI:
-
-```bash
-probelet stress cpu --duration 10s --cores max
-```
-
-Run memory stress locally from the CLI:
+Simulate an intermittently degraded upstream:
 
 ```bash
 probelet stress memory --duration 30s --size 256Mi
 ```
 
-Run disk stress locally from the CLI:
+### CLI
+
+Run CPU stress:
+
+```bash
+probelet stress cpu --duration 10s --cores max
+```
+
+Run memory stress:
+
+```bash
+probelet stress memory --duration 30s --size 256Mi
+```
+
+Run disk stress:
 
 ```bash
 probelet stress disk --duration 30s --size 256Mi
 ```
 
-Print the running build version:
+Print the version:
 
 ```bash
 probelet version

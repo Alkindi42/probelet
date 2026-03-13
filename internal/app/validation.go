@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -20,12 +21,12 @@ func (e *ValidationError) Error() string {
 // It returns the parsed time.Duration or an error with a user-friendly message.
 func ParseDurationParam(d string, max time.Duration) (time.Duration, error) {
 	if d == "" {
-		return 0, errors.New("duration is required (e.g. 100ms, 5s, 2m)")
+		return 0, errors.New("duration is required (e.g. 100ms, 5s, 1m)")
 	}
 
 	duration, err := time.ParseDuration(d)
 	if err != nil {
-		return 0, errors.New("invalid duration (examples: 100ms, 5s, 2m)")
+		return 0, errors.New("invalid duration (examples: 100ms, 5s, 1m)")
 	}
 
 	if duration <= 0 {
@@ -49,4 +50,24 @@ func ParseOptionalDurationParam(d string, max time.Duration) (time.Duration, err
 	}
 
 	return ParseDurationParam(d, max)
+}
+
+// ParseRateParam validates a floating-point rate parameter.
+// It returns 0 when the input is empty. If provided, the value
+// must be between 0 and 1 inclusive.
+func ParseRateParam(r string) (float64, error) {
+	if r == "" {
+		return 0, nil
+	}
+
+	rate, err := strconv.ParseFloat(r, 64)
+	if err != nil {
+		return 0, errors.New("invalid rate")
+	}
+
+	if rate < 0 || rate > 1 {
+		return 0, errors.New("rate must be between 0 and 1")
+	}
+
+	return rate, nil
 }

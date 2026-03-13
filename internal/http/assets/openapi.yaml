@@ -2,7 +2,7 @@ openapi: 3.0.3
 
 info:
   title: Probelet API
-  version: 0.1.0
+  version: 0.2.0
   license:
     name: MIT
     url: https://github.com/Alkindi42/probelet/blob/main/LICENSE
@@ -15,6 +15,7 @@ info:
       - simulate delayed or failing upstreams
       - inspect incoming HTTP requests
       - trigger bounded CPU, memory, and disk stress
+      - simulate controlled intermittent response degradation
 
     Probelet is intentionally:
       - stateless
@@ -57,6 +58,75 @@ components:
         `PROBELET_TOKEN` environment variable set.
 
   parameters:
+    FlakyErrorRate:
+      name: error_rate
+      in: query
+      required: false
+      description: |
+        Probability of returning the configured error status.
+
+        The value must be between `0` and `1` inclusive.
+
+        At least one of `error_rate` or `delay_rate` must be greater than `0`.
+
+        The sum of `error_rate` and `delay_rate` must not exceed `1`.
+      schema:
+        type: number
+        format: double
+        minimum: 0
+        maximum: 1
+        example: 0.2
+
+    FlakyDelayRate:
+      name: delay_rate
+      in: query
+      required: false
+      description: |
+        Probability of delaying the response before returning success.
+
+        The value must be between `0` and `1` inclusive.
+
+        At least one of `error_rate` or `delay_rate` must be greater than `0`.
+
+        The sum of `error_rate` and `delay_rate` must not exceed `1`.
+      schema:
+        type: number
+        format: double
+        minimum: 0
+        maximum: 1
+        example: 0.3
+
+    FlakyMaxDelay:
+      name: max_delay
+      in: query
+      required: false
+      description: |
+        Maximum delay applied when the request falls into the delayed path.
+
+        Parsed using Go's `time.ParseDuration`.
+
+        This parameter is required when `delay_rate` is greater than `0`.
+
+        Maximum supported value: `1m`.
+      schema:
+        type: string
+        example: 2s
+
+    FlakyStatus:
+      name: status
+      in: query
+      required: false
+      description: |
+        HTTP status code returned when the request falls into the error path.
+
+        Must be between `100` and `599`.
+
+        Defaults to `503`.
+      schema:
+        type: integer
+        minimum: 100
+        maximum: 599
+        example: 503
 
     DelayDuration:
       name: duration
@@ -223,6 +293,46 @@ components:
         example: nosniff
 
   schemas:
+    FlakyData:
+      type: object
+      required:
+        - status
+        - delayed
+        - delay
+      properties:
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        delayed:
+          type: boolean
+        delay:
+          type: string
+          description: Applied delay duration.
+          example: 250ms
+      additionalProperties: false
+
+    FlakyResponse:
+      type: object
+      required:
+        - ok
+        - message
+        - data
+      properties:
+        ok:
+          type: boolean
+          description: |
+            Indicates whether Probelet successfully executed the requested flaky simulation.
+            This can still be `true` when the simulated HTTP status is an error such as `503`.
+        message:
+          type: string
+          description: |
+            `done` for successful responses, or the lowercase HTTP status text
+            for simulated error responses.
+        data:
+          $ref: '#/components/schemas/FlakyData'
+      additionalProperties: false
+
     ErrorResponse:
       type: object
       required:
@@ -1250,6 +1360,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /flaky:
+    get:
+      tags: [debugging]
+      summary: Simulate controlled intermittent response degradation
+      description: |
+        Simulates an intermittently degraded HTTP endpoint.
+
+        For each request, Probelet randomly chooses one of three outcomes:
+          - return the configured error status
+          - delay the response up to `max_delay` and then return success
+          - return success immediately
+
+        The decision is made independently for each request.
+
+        This endpoint is useful for testing retry logic, timeout handling,
+        circuit breakers, and other resilience mechanisms under intermittent failure.
+
+        When Probelet is started with `PROBELET_TOKEN` set, this endpoint requires
+        the `X-Probelet-Token` header.
+      operationId: getFlaky
+      security:
+        - ProbeletToken: []
+      parameters:
+        - $ref: '#/components/parameters/FlakyErrorRate'
+        - $ref: '#/components/parameters/FlakyDelayRate'
+        - $ref: '#/components/parameters/FlakyMaxDelay'
+        - $ref: '#/components/parameters/FlakyStatus'
+      responses:
+        '200':
+          description: Successful flaky response.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlakyResponse'
+        '400':
+          description: Invalid flaky parameters.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid authentication token.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        default:
+          description: Simulated error response.
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/XRequestId'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/XContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlakyResponse'
 
   /docs:
     get:
