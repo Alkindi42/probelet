@@ -52,6 +52,17 @@ tar -xzf probelet-<version>-linux-amd64.tar.gz
 ./probelet serve
 ```
 
+#### macOS
+
+When downloading the binary directly, macOS may block execution due to
+Gatekeeper quarantine.
+
+You can remove the quarantine attribute with:
+
+```bash
+xattr -d com.apple.quarantine ./probelet
+```
+
 ---
 
 ## 📚 API documentation
