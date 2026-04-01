@@ -19,6 +19,22 @@ It combines the simplicity of tools like **httpbin** with **controlled system st
 * exercising observability and monitoring stacks
 * running controlled CPU, memory, and disk stress locally or over HTTP
 
+## Why Probelet exists
+
+Modern platforms rely on mechanisms such as retries, autoscaling, circuit breakers, and readiness probes to **react to failure**.
+
+However, the conditions that trigger these mechanisms are rarely exercised deliberately. Most systems are validated on the **happy path**, while their behavior under degradation is often discovered only during incidents.
+
+Probelet was created to make these failure conditions easier to reproduce.
+
+It exposes **minimal primitives** that allow engineers to simulate response delays, transient errors, resource pressure, and readiness changes in a controlled and observable way.
+
+This makes it possible to exercise platform reliability mechanisms — retries, autoscaling, health checks, and monitoring pipelines — without introducing complex test environments.
+
+If you're interested in the ideas behind this tool, you can read the article:
+
+👉 [You don’t test platform reliability until you test failure semantics](https://brainstacks.dev/posts/reliability-and-failure-semantics)
+
 ---
 
 ## 🚀 Installation
@@ -204,7 +220,7 @@ curl "http://localhost:8000/stress/cpu?duration=5s"
 
 ## 🤝 Contributing
 
-Contributions and ideas are welcome.
+Contributions and ideas are welcome.  
 Feel free to open an issue or a pull request.
 
 ## 📄 License
